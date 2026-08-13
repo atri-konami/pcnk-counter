@@ -1,0 +1,31 @@
+:root {
+  color-scheme: dark;
+  --bg: #11141c;
+  --panel: #1b2030;
+  --panel-2: #232a3d;
+  --text: #f4f6fb;
+  --muted: #9aa3b8;
+  --accent: #7ee0b0;
+  --accent-2: #5cc4ff;
+  --danger: #ff7b7b;
+  --stored: #f0c36a;
+  --radius: 16px;
+  font-family: "Segoe UI", "Hiragino Sans", "Noto Sans JP", sans-serif;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body,
+#root {
+  margin: 0;
+  min-height: 100%;
+  background: var(--bg);
+  color: var(--text);
+}
+
+body {
+  -webkit-tap-highlight-color: transparent;
+}

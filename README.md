@@ -1,0 +1,23 @@
+# pcnk-counter
+
+パチンコのデータカウンターに表示される総回転数を、打ち出し（既定 250 玉 / 1000 円）ごとに記録するフロント専用アプリです。
+
+公開 URL: https://atri-konami.github.io/pcnk-counter/
+
+## できること
+
+- 1行目は開始回転数、2行目以降は直前との差をその打ち出しの回転数として記録する
+- 総玉数と平均を `75.0回転/k` 形式で表示する
+- 貯玉は基準玉数で割った行数ぶん投資に含めず、`貯玉500発 + 3000円` と表示する
+- 貯玉・基準玉数・投資単価・履歴はブラウザの localStorage に保存する
+
+## 開発（Docker + WSL）
+
+WSL の Ubuntu で、プロジェクトディレクトリに入って起動します。
+
+```bash
+cd ~/hobby/pcnk-counter
+docker compose up
+```
+
+ブラウザで http://localhost:5173/pcnk-counter/ を開きます。
