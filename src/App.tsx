@@ -3,10 +3,92 @@ import {
   canAddSpin,
   parseNonNegativeInt,
   summarize,
+  type RecordRow,
   type Settings,
 } from "./lib/calc";
-import { loadState, saveState } from "./lib/storage";
+import {
+  archiveCurrentSession,
+  defaultSessionName,
+  deleteSavedSession,
+  loadState,
+  saveState,
+  type SavedSession,
+} from "./lib/storage";
 import "./App.css";
+
+function formatSavedAt(timestamp: number): string {
+  return new Date(timestamp).toLocaleString("ja-JP", {
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+    hour: "2-digit",
+    minute: "2-digit",
+  });
+}
+
+function HistoryList({ rows }: { rows: RecordRow[] }) {
+  if (rows.length === 0) {
+    return <p className="empty">記録がありません。</p>;
+  }
+  return (
+    <ol className="history-list">
+      {rows.map((row, index) => (
+        <li key={`${row.totalSpins}-${index}`} className={row.isStart ? "start" : ""}>
+          <span className="row-index">
+            {row.isStart ? "開始" : `${row.playIndex}`}
+          </span>
+          <span className="row-total">{row.totalSpins.toLocaleString("ja-JP")}</span>
+          <span className="row-delta">
+            {row.delta === null ? "—" : `+${row.delta}`}
+          </span>
+          <span className={`row-kind ${row.isStored ? "stored" : row.isStart ? "" : "paid"}`}>
+            {row.isStart ? "基準" : row.isStored ? "貯玉" : "現金"}
+          </span>
+        </li>
+      ))}
+    </ol>
+  );
+}
+
+function PastSessionItem({
+  session,
+  onDelete,
+}: {
+  session: SavedSession;
+  onDelete: (id: string) => void;
+}) {
+  const summary = useMemo(
+    () => summarize(session.records, session.settings),
+    [session],
+  );
+
+  return (
+    <li>
+      <details className="session-item">
+        <summary>
+          <span className="session-item-main">
+            <strong className="session-item-name">{session.name}</strong>
+            <span className="session-item-meta">{formatSavedAt(session.savedAt)}</span>
+          </span>
+          <span className="session-item-stats">
+            {summary.averageLabel} / {summary.investmentLabel}
+          </span>
+        </summary>
+        <HistoryList rows={summary.rows} />
+        <button
+          type="button"
+          className="danger"
+          onClick={(event) => {
+            event.preventDefault();
+            onDelete(session.id);
+          }}
+        >
+          削除
+        </button>
+      </details>
+    </li>
+  );
+}
 
 export default function App() {
   const [state, setState] = useState(loadState);
@@ -14,7 +96,14 @@ export default function App() {
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    saveState(state);
+    const result = saveState(state);
+    if (!result.ok) {
+      setError(
+        result.quotaExceeded
+          ? "保存容量がいっぱいです。古いセッションを削除してください"
+          : "保存に失敗しました",
+      );
+    }
   }, [state]);
 
   const summary = useMemo(
@@ -59,15 +148,28 @@ export default function App() {
     setError(null);
   }
 
-  function resetSession() {
+  function saveAndReset() {
     if (state.records.length === 0) {
       return;
     }
-    if (!window.confirm("このセッションの回転数記録を消しますか？（貯玉・設定は残ります）")) {
+    const name = state.sessionName.trim() || defaultSessionName();
+    if (!window.confirm(`「${name}」を保存してリセットしますか？（貯玉・設定は残ります）`)) {
       return;
     }
-    setState((prev) => ({ ...prev, records: [] }));
+    setState((prev) => archiveCurrentSession(prev));
     setInput("");
+    setError(null);
+  }
+
+  function onDeleteSession(id: string) {
+    const session = state.sessions.find((item) => item.id === id);
+    if (!session) {
+      return;
+    }
+    if (!window.confirm(`「${session.name}」を削除しますか？`)) {
+      return;
+    }
+    setState((prev) => deleteSavedSession(prev, id));
     setError(null);
   }
 
@@ -92,6 +194,20 @@ export default function App() {
           <strong className="value">{summary.investmentLabel}</strong>
         </div>
       </section>
+
+      <label className="session-name">
+        セッション名
+        <input
+          type="text"
+          value={state.sessionName}
+          onChange={(e) => {
+            setState((prev) => ({ ...prev, sessionName: e.target.value }));
+            setError(null);
+          }}
+          placeholder="機種名・日付など"
+          autoComplete="off"
+        />
+      </label>
 
       <details className="settings">
         <summary>設定（貯玉・基準玉数・投資単価）</summary>
@@ -165,8 +281,8 @@ export default function App() {
         <button type="button" onClick={undoLast} disabled={state.records.length === 0}>
           直前を取り消す
         </button>
-        <button type="button" onClick={resetSession} disabled={state.records.length === 0}>
-          セッションをリセット
+        <button type="button" onClick={saveAndReset} disabled={state.records.length === 0}>
+          保存してリセット
         </button>
       </div>
 
@@ -175,24 +291,26 @@ export default function App() {
         {summary.rows.length === 0 ? (
           <p className="empty">まだ記録がありません。開始回転数を入力してください。</p>
         ) : (
-          <ol className="history-list">
-            {summary.rows.map((row, index) => (
-              <li key={`${row.totalSpins}-${index}`} className={row.isStart ? "start" : ""}>
-                <span className="row-index">
-                  {row.isStart ? "開始" : `${row.playIndex}`}
-                </span>
-                <span className="row-total">{row.totalSpins.toLocaleString("ja-JP")}</span>
-                <span className="row-delta">
-                  {row.delta === null ? "—" : `+${row.delta}`}
-                </span>
-                <span className={`row-kind ${row.isStored ? "stored" : row.isStart ? "" : "paid"}`}>
-                  {row.isStart ? "基準" : row.isStored ? "貯玉" : "現金"}
-                </span>
-              </li>
-            ))}
-          </ol>
+          <HistoryList rows={summary.rows} />
         )}
       </section>
+
+      <details className="settings past-sessions">
+        <summary>過去セッション（{state.sessions.length}）</summary>
+        {state.sessions.length === 0 ? (
+          <p className="empty">保存したセッションはありません。</p>
+        ) : (
+          <ul className="session-list">
+            {state.sessions.map((session) => (
+              <PastSessionItem
+                key={session.id}
+                session={session}
+                onDelete={onDeleteSession}
+              />
+            ))}
+          </ul>
+        )}
+      </details>
     </div>
   );
 }

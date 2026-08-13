@@ -68,12 +68,17 @@
 }
 
 .settings label,
-.entry label {
+.entry label,
+.session-name {
   display: flex;
   flex-direction: column;
   gap: 6px;
   color: var(--muted);
   font-size: 0.9rem;
+}
+
+.session-name {
+  margin-bottom: 16px;
 }
 
 input {
@@ -85,6 +90,10 @@ input {
   font-size: 1.2rem;
   padding: 12px 14px;
   font-variant-numeric: tabular-nums;
+}
+
+input[type="text"] {
+  font-variant-numeric: normal;
 }
 
 .hint {
@@ -123,6 +132,11 @@ button.primary {
 
 button:disabled {
   opacity: 0.4;
+}
+
+button.danger {
+  background: #3a2430;
+  color: var(--danger);
 }
 
 .error {
@@ -195,6 +209,69 @@ button:disabled {
 .row-kind.paid {
   color: #082018;
   background: var(--accent);
+}
+
+.past-sessions {
+  margin-top: 20px;
+}
+
+.past-sessions .empty {
+  margin: 14px 0 4px;
+}
+
+.session-list {
+  list-style: none;
+  margin: 14px 0 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.session-item {
+  background: var(--panel-2);
+  border-radius: 12px;
+  padding: 12px 14px;
+}
+
+.session-item summary {
+  cursor: pointer;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  font-weight: 600;
+}
+
+.session-item-main {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 12px;
+  align-items: baseline;
+}
+
+.session-item-name {
+  color: var(--text);
+}
+
+.session-item-meta,
+.session-item-stats {
+  color: var(--muted);
+  font-size: 0.85rem;
+  font-weight: 400;
+  font-variant-numeric: tabular-nums;
+}
+
+.session-item .history-list {
+  margin-top: 12px;
+}
+
+.session-item .history-list li {
+  background: var(--panel);
+}
+
+.session-item .danger {
+  margin-top: 12px;
+  width: 100%;
 }
 
 @media (min-width: 520px) {
