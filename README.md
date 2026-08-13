@@ -1,5 +1,7 @@
 # pcnk-counter
 
+[![Deploy to GitHub Pages](https://github.com/atri-konami/pcnk-counter/actions/workflows/deploy.yml/badge.svg)](https://github.com/atri-konami/pcnk-counter/actions/workflows/deploy.yml)
+
 パチンコのデータカウンターに表示される総回転数を、打ち出し（既定 250 玉 / 1000 円）ごとに記録するフロント専用アプリです。
 
 公開 URL: https://atri-konami.github.io/pcnk-counter/
@@ -22,3 +24,7 @@ docker compose up
 ```
 
 ブラウザで http://localhost:5173/pcnk-counter/ を開きます。
+
+## デプロイ
+
+`master` / `main` への push で GitHub Pages に公開されます。成否は README 先頭のバッジか、[Actions の実行履歴](https://github.com/atri-konami/pcnk-counter/actions/workflows/deploy.yml) で確認できます。

@@ -1,0 +1,13 @@
+---
+description: After pushing to main/master, report GitHub Pages deploy status
+alwaysApply: true
+---
+
+# Deploy status after push
+
+When you push to `main` or `master` (or the user asks you to push):
+
+1. After a successful `git push`, do not stop at "pushed". Check the latest run of `.github/workflows/deploy.yml` for the pushed SHA.
+2. Prefer `gh run list --workflow=deploy.yml --branch <branch> --limit 1` then `gh run watch <id>`. If `gh` is unavailable, fetch `https://api.github.com/repos/atri-konami/pcnk-counter/actions/workflows/deploy.yml/runs?per_page=5` and match `head_sha`.
+3. Wait until the run completes (typically under a minute). Then report in Japanese: success or failure, the run URL, and the live site `https://atri-konami.github.io/pcnk-counter/`.
+4. If it failed, summarize the failing step from the logs. If the run never appears, say so and link to [the workflow history](https://github.com/atri-konami/pcnk-counter/actions/workflows/deploy.yml).
