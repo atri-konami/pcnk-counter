@@ -48,6 +48,22 @@
   font-variant-numeric: tabular-nums;
 }
 
+.summary-card .subvalue {
+  display: block;
+  margin-top: 4px;
+  font-size: 1rem;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+}
+
+.summary-card .subvalue.plus {
+  color: var(--accent);
+}
+
+.summary-card .subvalue.minus {
+  color: var(--danger);
+}
+
 .settings {
   background: var(--panel);
   border-radius: var(--radius);
@@ -276,7 +292,7 @@ button.danger {
 
 @media (min-width: 520px) {
   .settings-grid {
-    grid-template-columns: repeat(3, 1fr);
+    grid-template-columns: repeat(2, 1fr);
   }
 
   .summary-card .value {

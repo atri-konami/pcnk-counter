@@ -8,12 +8,14 @@ export type SavedSession = {
   savedAt: number;
   settings: Settings;
   records: number[];
+  border: number | null;
 };
 
 export type AppState = {
   settings: Settings;
   records: number[];
   sessionName: string;
+  border: number | null;
   sessions: SavedSession[];
 };
 
@@ -25,6 +27,7 @@ export const DEFAULT_STATE: AppState = {
   settings: { ...DEFAULT_SETTINGS },
   records: [],
   sessionName: "",
+  border: null,
   sessions: [],
 };
 
@@ -65,6 +68,13 @@ function parseRecords(value: unknown): number[] {
     : [];
 }
 
+function parseBorder(value: unknown): number | null {
+  if (typeof value !== "number" || !Number.isFinite(value) || value < 0) {
+    return null;
+  }
+  return value;
+}
+
 function parseSavedSession(value: unknown): SavedSession | null {
   if (!value || typeof value !== "object") {
     return null;
@@ -85,6 +95,7 @@ function parseSavedSession(value: unknown): SavedSession | null {
     savedAt: s.savedAt,
     settings: parseSettings(s.settings),
     records: parseRecords(s.records),
+    border: parseBorder(s.border),
   };
 }
 
@@ -113,11 +124,13 @@ export function archiveCurrentSession(
     savedAt,
     settings: { ...state.settings },
     records: [...state.records],
+    border: state.border,
   };
   return {
     ...state,
     records: [],
     sessionName: "",
+    border: null,
     sessions: [session, ...state.sessions],
   };
 }
@@ -150,6 +163,7 @@ export function loadState(): AppState {
       settings: parseSettings(data.settings),
       records: parseRecords(data.records),
       sessionName: typeof data.sessionName === "string" ? data.sessionName : "",
+      border: parseBorder(data.border),
       sessions,
     };
   } catch {

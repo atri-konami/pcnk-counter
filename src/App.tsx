@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState, type FormEvent } from "react";
 import {
   canAddSpin,
   parseNonNegativeInt,
+  parseNonNegativeNumber,
   summarize,
   type RecordRow,
   type Settings,
@@ -58,7 +59,7 @@ function PastSessionItem({
   onDelete: (id: string) => void;
 }) {
   const summary = useMemo(
-    () => summarize(session.records, session.settings),
+    () => summarize(session.records, session.settings, session.border),
     [session],
   );
 
@@ -71,7 +72,9 @@ function PastSessionItem({
             <span className="session-item-meta">{formatSavedAt(session.savedAt)}</span>
           </span>
           <span className="session-item-stats">
-            {summary.averageLabel} / {summary.investmentLabel}
+            {summary.averageLabel}
+            {summary.borderDiffLabel ? ` (${summary.borderDiffLabel})` : ""} /{" "}
+            {summary.investmentLabel}
           </span>
         </summary>
         <HistoryList rows={summary.rows} />
@@ -90,9 +93,16 @@ function PastSessionItem({
   );
 }
 
+function formatBorderInput(border: number | null): string {
+  return border === null ? "" : String(border);
+}
+
 export default function App() {
   const [state, setState] = useState(loadState);
   const [input, setInput] = useState("");
+  const [borderInput, setBorderInput] = useState(() =>
+    formatBorderInput(state.border),
+  );
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
@@ -107,7 +117,7 @@ export default function App() {
   }, [state]);
 
   const summary = useMemo(
-    () => summarize(state.records, state.settings),
+    () => summarize(state.records, state.settings, state.border),
     [state],
   );
 
@@ -125,6 +135,19 @@ export default function App() {
         [key]: key === "unitBalls" ? Math.max(1, parsed) : parsed,
       },
     }));
+  }
+
+  function updateBorder(raw: string) {
+    setBorderInput(raw);
+    if (raw.trim() === "") {
+      setState((prev) => ({ ...prev, border: null }));
+      return;
+    }
+    const parsed = parseNonNegativeNumber(raw);
+    if (parsed === null) {
+      return;
+    }
+    setState((prev) => ({ ...prev, border: parsed }));
   }
 
   function onAdd(event: FormEvent) {
@@ -153,11 +176,16 @@ export default function App() {
       return;
     }
     const name = state.sessionName.trim() || defaultSessionName();
-    if (!window.confirm(`「${name}」を保存してリセットしますか？（貯玉・設定は残ります）`)) {
+    if (
+      !window.confirm(
+        `「${name}」を保存してリセットしますか？（貯玉・設定は残ります。ボーダーはリセットされます）`,
+      )
+    ) {
       return;
     }
     setState((prev) => archiveCurrentSession(prev));
     setInput("");
+    setBorderInput("");
     setError(null);
   }
 
@@ -184,6 +212,17 @@ export default function App() {
         <div className="summary-card highlight">
           <span className="label">平均</span>
           <strong className="value">{summary.averageLabel}</strong>
+          {summary.borderDiffLabel ? (
+            <span
+              className={`subvalue ${
+                summary.borderDiff != null && summary.borderDiff >= 0
+                  ? "plus"
+                  : "minus"
+              }`}
+            >
+              {summary.borderDiffLabel}
+            </span>
+          ) : null}
         </div>
         <div className="summary-card">
           <span className="label">総玉数</span>
@@ -210,7 +249,7 @@ export default function App() {
       </label>
 
       <details className="settings">
-        <summary>設定（貯玉・基準玉数・投資単価）</summary>
+        <summary>設定（貯玉・基準玉数・投資単価・ボーダー）</summary>
         <div className="settings-grid">
           <label>
             貯玉（発）
@@ -245,9 +284,21 @@ export default function App() {
               onChange={(e) => updateSetting("unitYen", e.target.value)}
             />
           </label>
+          <label>
+            ボーダー（回転/k）
+            <input
+              type="number"
+              inputMode="decimal"
+              min={0}
+              step={0.1}
+              value={borderInput}
+              onChange={(e) => updateBorder(e.target.value)}
+              placeholder="未入力"
+            />
+          </label>
         </div>
         <p className="hint">
-          貯玉は基準玉数で割った行数ぶん投資に含めません。投資額の貯玉は消化した玉数です。端数は次の打ち出しを賄いません。
+          貯玉は基準玉数で割った行数ぶん投資に含めません。投資額の貯玉は消化した玉数です。端数は次の打ち出しを賄いません。ボーダーはセッション保存時にリセットされます。
         </p>
       </details>
 
