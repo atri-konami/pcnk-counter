@@ -18,6 +18,8 @@ export type Summary = {
   totalDelta: number;
   average: number | null;
   averageLabel: string;
+  borderDiff: number | null;
+  borderDiffLabel: string | null;
   freeRows: number;
   paidRows: number;
   usedStoredBalls: number;
@@ -31,6 +33,8 @@ export const DEFAULT_SETTINGS: Settings = {
   unitBalls: 250,
   unitYen: 1000,
 };
+
+const AVERAGE_BASE_YEN = 1000;
 
 export function parseNonNegativeInt(value: string): number | null {
   if (value.trim() === "") {
@@ -46,6 +50,20 @@ export function parseNonNegativeInt(value: string): number | null {
   return n;
 }
 
+export function parseNonNegativeNumber(value: string): number | null {
+  if (value.trim() === "") {
+    return null;
+  }
+  if (!/^\d+(\.\d+)?$/.test(value.trim())) {
+    return null;
+  }
+  const n = Number(value);
+  if (!Number.isFinite(n) || n < 0) {
+    return null;
+  }
+  return n;
+}
+
 export function canAddSpin(records: number[], next: number): boolean {
   if (!Number.isInteger(next) || next < 0) {
     return false;
@@ -56,7 +74,11 @@ export function canAddSpin(records: number[], next: number): boolean {
   return next >= records[records.length - 1];
 }
 
-export function summarize(records: number[], settings: Settings): Summary {
+export function summarize(
+  records: number[],
+  settings: Settings,
+  border: number | null = null,
+): Summary {
   const storedBalls = Math.max(0, Math.floor(settings.storedBalls));
   const unitBalls = Math.max(1, Math.floor(settings.unitBalls) || 1);
   const unitYen = Math.max(0, Math.floor(settings.unitYen));
@@ -89,8 +111,16 @@ export function summarize(records: number[], settings: Settings): Summary {
   });
 
   const totalDelta = rows.reduce((sum, row) => sum + (row.delta ?? 0), 0);
-  const average = playCount > 0 ? totalDelta / playCount : null;
+  const denom = (unitYen * playCount) / AVERAGE_BASE_YEN;
+  const average =
+    playCount > 0 && unitYen > 0 ? totalDelta / denom : null;
   const averageLabel = average === null ? "—" : `${average.toFixed(1)}回転/k`;
+  const borderDiff =
+    average === null || border === null ? null : average - border;
+  const borderDiffLabel =
+    borderDiff === null
+      ? null
+      : `${borderDiff >= 0 ? "+" : ""}${borderDiff.toFixed(1)}`;
   const investmentLabel = `貯玉${usedStoredBalls}発 + ${investmentYen.toLocaleString("ja-JP")}円`;
 
   return {
@@ -99,6 +129,8 @@ export function summarize(records: number[], settings: Settings): Summary {
     totalDelta,
     average,
     averageLabel,
+    borderDiff,
+    borderDiffLabel,
     freeRows,
     paidRows,
     usedStoredBalls,
