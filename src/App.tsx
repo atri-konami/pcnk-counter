@@ -1,8 +1,12 @@
 import { useEffect, useMemo, useState, type FormEvent } from "react";
 import {
   canAddSpin,
+  displayKindLabel,
   parseNonNegativeInt,
   parseNonNegativeNumber,
+  playModeHint,
+  resolveJackpotCash,
+  rowIndexLabel,
   summarize,
   type RecordRow,
   type Settings,
@@ -34,16 +38,14 @@ function HistoryList({ rows }: { rows: RecordRow[] }) {
   return (
     <ol className="history-list">
       {rows.map((row, index) => (
-        <li key={`${row.totalSpins}-${index}`} className={row.isStart ? "start" : ""}>
-          <span className="row-index">
-            {row.isStart ? "開始" : `${row.playIndex}`}
-          </span>
+        <li key={`${row.totalSpins}-${row.displayKind}-${index}`} className={row.isStart ? "start" : ""}>
+          <span className="row-index">{rowIndexLabel(row)}</span>
           <span className="row-total">{row.totalSpins.toLocaleString("ja-JP")}</span>
           <span className="row-delta">
             {row.delta === null ? "—" : `+${row.delta}`}
           </span>
-          <span className={`row-kind ${row.isStored ? "stored" : row.isStart ? "" : "paid"}`}>
-            {row.isStart ? "基準" : row.isStored ? "貯玉" : "現金"}
+          <span className={`row-kind ${row.displayKind}`}>
+            {displayKindLabel(row.displayKind)}
           </span>
         </li>
       ))}
@@ -100,6 +102,9 @@ function formatBorderInput(border: number | null): string {
 export default function App() {
   const [state, setState] = useState(loadState);
   const [input, setInput] = useState("");
+  const [jackpotSpins, setJackpotSpins] = useState("");
+  const [jackpotCash, setJackpotCash] = useState("");
+  const [jackpotHeld, setJackpotHeld] = useState("");
   const [borderInput, setBorderInput] = useState(() =>
     formatBorderInput(state.border),
   );
@@ -122,6 +127,9 @@ export default function App() {
   );
 
   const isStart = state.records.length === 0;
+  const cashIgnored =
+    summary.playMode === "held" || summary.playMode === "remainder";
+  const modeHint = playModeHint(summary.playMode, summary.heldBalls);
 
   function updateSetting<K extends keyof Settings>(key: K, raw: string) {
     const parsed = parseNonNegativeInt(raw);
@@ -150,6 +158,12 @@ export default function App() {
     setState((prev) => ({ ...prev, border: parsed }));
   }
 
+  function clearJackpotInputs() {
+    setJackpotSpins("");
+    setJackpotCash("");
+    setJackpotHeld("");
+  }
+
   function onAdd(event: FormEvent) {
     event.preventDefault();
     const next = parseNonNegativeInt(input);
@@ -161,8 +175,54 @@ export default function App() {
       setError("直前の総回転数以上を入力してください");
       return;
     }
-    setState((prev) => ({ ...prev, records: [...prev.records, next] }));
+    setState((prev) => ({
+      ...prev,
+      records: [
+        ...prev.records,
+        {
+          totalSpins: next,
+          kind: prev.records.length === 0 ? "start" : "play",
+        },
+      ],
+    }));
     setInput("");
+    setError(null);
+  }
+
+  function onAddJackpot(event: FormEvent) {
+    event.preventDefault();
+    const next = parseNonNegativeInt(jackpotSpins);
+    if (next === null) {
+      setError("大当たりの回転数は0以上の整数を入力してください");
+      return;
+    }
+    if (!canAddSpin(state.records, next)) {
+      setError("直前の総回転数以上を入力してください");
+      return;
+    }
+    const held = parseNonNegativeInt(jackpotHeld);
+    if (held === null) {
+      setError("終了時の持ち玉は0以上の整数を入力してください");
+      return;
+    }
+    const cash = resolveJackpotCash(summary.playMode, jackpotCash);
+    if (!cash.ok) {
+      setError(cash.error);
+      return;
+    }
+    setState((prev) => ({
+      ...prev,
+      records: [
+        ...prev.records,
+        {
+          totalSpins: next,
+          kind: "jackpot",
+          cashYen: cash.cashYen,
+          heldBalls: held,
+        },
+      ],
+    }));
+    clearJackpotInputs();
     setError(null);
   }
 
@@ -186,6 +246,7 @@ export default function App() {
     setState((prev) => archiveCurrentSession(prev));
     setInput("");
     setBorderInput("");
+    clearJackpotInputs();
     setError(null);
   }
 
@@ -200,6 +261,17 @@ export default function App() {
     setState((prev) => deleteSavedSession(prev, id));
     setError(null);
   }
+
+  const spinsLabel = isStart
+    ? "開始回転数"
+    : summary.playMode === "remainder"
+      ? "端数（ハズレ）"
+      : "総回転数";
+  const spinsPlaceholder = isStart
+    ? "開始時の総回転数"
+    : summary.playMode === "remainder"
+      ? "打ち切ったあとの総回転数"
+      : "データカウンターの総回転数";
 
   return (
     <div className="app">
@@ -225,8 +297,8 @@ export default function App() {
           ) : null}
         </div>
         <div className="summary-card">
-          <span className="label">総玉数</span>
-          <strong className="value">{summary.totalBalls.toLocaleString("ja-JP")}玉</strong>
+          <span className="label">持ち玉</span>
+          <strong className="value">{summary.heldBalls.toLocaleString("ja-JP")}玉</strong>
         </div>
         <div className="summary-card wide">
           <span className="label">投資額</span>
@@ -298,14 +370,12 @@ export default function App() {
           </label>
         </div>
         <p className="hint">
-          貯玉は基準玉数で割った行数ぶん投資に含めません。投資額の貯玉は消化した玉数です。端数は次の打ち出しを賄いません。ボーダーはセッション保存時にリセットされます。
+          貯玉は基準玉数で割った行数ぶん投資に含めません。投資額の貯玉は消化した玉数です。大当たりと端数ハズレは平均に含めません。ボーダーはセッション保存時にリセットされます。
         </p>
       </details>
 
       <form className="entry" onSubmit={onAdd}>
-        <label htmlFor="spins">
-          {isStart ? "開始回転数" : "総回転数"}
-        </label>
+        <label htmlFor="spins">{spinsLabel}</label>
         <div className="entry-row">
           <input
             id="spins"
@@ -318,15 +388,74 @@ export default function App() {
               setInput(e.target.value);
               setError(null);
             }}
-            placeholder={isStart ? "開始時の総回転数" : "データカウンターの総回転数"}
+            placeholder={spinsPlaceholder}
             autoComplete="off"
           />
           <button type="submit" className="primary">
             追加
           </button>
         </div>
-        {error ? <p className="error">{error}</p> : null}
+        {modeHint ? <p className="hint">{modeHint}</p> : null}
       </form>
+
+      {!isStart ? (
+        <form className="entry jackpot-entry" onSubmit={onAddJackpot}>
+          <p className="jackpot-heading">大当たり</p>
+          <label htmlFor="jackpot-spins">大当たり時の総回転数</label>
+          <input
+            id="jackpot-spins"
+            type="number"
+            inputMode="numeric"
+            min={0}
+            step={1}
+            value={jackpotSpins}
+            onChange={(e) => {
+              setJackpotSpins(e.target.value);
+              setError(null);
+            }}
+            placeholder="大当たりしたときの総回転数"
+            autoComplete="off"
+          />
+          <label htmlFor="jackpot-cash">前回記録からの現金（円）</label>
+          <input
+            id="jackpot-cash"
+            type="number"
+            inputMode="numeric"
+            min={0}
+            step={1}
+            value={cashIgnored ? "" : jackpotCash}
+            onChange={(e) => {
+              setJackpotCash(e.target.value);
+              setError(null);
+            }}
+            placeholder="貯玉・持ち玉中は空欄"
+            autoComplete="off"
+            disabled={cashIgnored}
+          />
+          <label htmlFor="jackpot-held">終了時の持ち玉</label>
+          <div className="entry-row">
+            <input
+              id="jackpot-held"
+              type="number"
+              inputMode="numeric"
+              min={0}
+              step={1}
+              value={jackpotHeld}
+              onChange={(e) => {
+                setJackpotHeld(e.target.value);
+                setError(null);
+              }}
+              placeholder="大当たり終了時の持ち玉"
+              autoComplete="off"
+            />
+            <button type="submit" className="jackpot">
+              記録
+            </button>
+          </div>
+        </form>
+      ) : null}
+
+      {error ? <p className="error">{error}</p> : null}
 
       <div className="actions">
         <button type="button" onClick={undoLast} disabled={state.records.length === 0}>

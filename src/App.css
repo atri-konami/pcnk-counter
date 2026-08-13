@@ -112,6 +112,10 @@ input[type="text"] {
   font-variant-numeric: normal;
 }
 
+input:disabled {
+  opacity: 0.45;
+}
+
 .hint {
   color: var(--muted);
   font-size: 0.8rem;
@@ -129,6 +133,28 @@ input[type="text"] {
   gap: 8px;
 }
 
+.jackpot-entry {
+  background: var(--panel);
+  border-radius: var(--radius);
+  padding: 14px 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.jackpot-heading {
+  margin: 0 0 4px;
+  font-weight: 700;
+}
+
+.jackpot-entry label {
+  margin-top: 4px;
+}
+
+.jackpot-entry .entry-row {
+  margin-top: 4px;
+}
+
 button {
   border: 0;
   border-radius: 12px;
@@ -142,6 +168,13 @@ button {
 button.primary {
   background: var(--accent);
   color: #102018;
+  font-weight: 700;
+  min-width: 88px;
+}
+
+button.jackpot {
+  background: var(--stored);
+  color: #1b1406;
   font-weight: 700;
   min-width: 88px;
 }
@@ -188,7 +221,7 @@ button.danger {
 
 .history-list li {
   display: grid;
-  grid-template-columns: 52px 1fr auto auto;
+  grid-template-columns: 4.5em 1fr auto auto;
   gap: 10px;
   align-items: center;
   background: var(--panel);
@@ -225,6 +258,21 @@ button.danger {
 .row-kind.paid {
   color: #082018;
   background: var(--accent);
+}
+
+.row-kind.held {
+  color: #062018;
+  background: var(--accent-2);
+}
+
+.row-kind.jackpot {
+  color: #2a1208;
+  background: #f08a5a;
+}
+
+.row-kind.miss {
+  color: var(--muted);
+  background: var(--panel-2);
 }
 
 .past-sessions {

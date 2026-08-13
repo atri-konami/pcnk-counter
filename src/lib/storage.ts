@@ -1,4 +1,4 @@
-import { DEFAULT_SETTINGS, type Settings } from "./calc";
+import { DEFAULT_SETTINGS, parseRecordList, type RecordEntry, type Settings } from "./calc";
 
 const STORAGE_KEY = "pcnk-counter-state";
 
@@ -7,13 +7,13 @@ export type SavedSession = {
   name: string;
   savedAt: number;
   settings: Settings;
-  records: number[];
+  records: RecordEntry[];
   border: number | null;
 };
 
 export type AppState = {
   settings: Settings;
-  records: number[];
+  records: RecordEntry[];
   sessionName: string;
   border: number | null;
   sessions: SavedSession[];
@@ -62,10 +62,8 @@ function parseSettings(value: unknown): Settings {
   };
 }
 
-function parseRecords(value: unknown): number[] {
-  return Array.isArray(value)
-    ? value.filter((n): n is number => Number.isInteger(n) && n >= 0)
-    : [];
+function parseRecords(value: unknown): RecordEntry[] {
+  return parseRecordList(value);
 }
 
 function parseBorder(value: unknown): number | null {
