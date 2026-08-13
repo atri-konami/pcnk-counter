@@ -20,6 +20,7 @@ export type Summary = {
   averageLabel: string;
   freeRows: number;
   paidRows: number;
+  usedStoredBalls: number;
   investmentYen: number;
   investmentLabel: string;
   rows: RecordRow[];
@@ -64,6 +65,7 @@ export function summarize(records: number[], settings: Settings): Summary {
   const totalBalls = playCount * unitBalls;
   const freeRows = Math.floor(storedBalls / unitBalls);
   const paidRows = Math.max(0, playCount - freeRows);
+  const usedStoredBalls = Math.min(playCount, freeRows) * unitBalls;
   const investmentYen = paidRows * unitYen;
 
   const rows: RecordRow[] = records.map((totalSpins, i) => {
@@ -89,7 +91,7 @@ export function summarize(records: number[], settings: Settings): Summary {
   const totalDelta = rows.reduce((sum, row) => sum + (row.delta ?? 0), 0);
   const average = playCount > 0 ? totalDelta / playCount : null;
   const averageLabel = average === null ? "—" : `${average.toFixed(1)}回転/k`;
-  const investmentLabel = `貯玉${storedBalls}発 + ${investmentYen.toLocaleString("ja-JP")}円`;
+  const investmentLabel = `貯玉${usedStoredBalls}発 + ${investmentYen.toLocaleString("ja-JP")}円`;
 
   return {
     playCount,
@@ -99,6 +101,7 @@ export function summarize(records: number[], settings: Settings): Summary {
     averageLabel,
     freeRows,
     paidRows,
+    usedStoredBalls,
     investmentYen,
     investmentLabel,
     rows,
