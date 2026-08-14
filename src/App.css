@@ -122,6 +122,8 @@ button.summary-card:focus-visible {
 
 .settings label,
 .entry label,
+.adjust label,
+.adjust-label,
 .session-name {
   display: flex;
   flex-direction: column;
@@ -132,6 +134,30 @@ button.summary-card:focus-visible {
 
 .session-name {
   margin-bottom: 16px;
+}
+
+.adjust-body {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  margin-top: 14px;
+}
+
+.adjust-block {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.adjust-buttons {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.adjust-buttons button {
+  flex: 1 1 calc(33.33% - 8px);
+  min-width: 72px;
 }
 
 input,
@@ -322,6 +348,16 @@ button.danger {
 .row-kind.remainder {
   color: var(--muted);
   background: var(--panel-2);
+}
+
+.row-kind.adjustHeld {
+  color: #062018;
+  background: var(--accent-2);
+}
+
+.row-kind.adjustInvestment {
+  color: #082018;
+  background: var(--accent);
 }
 
 .past-sessions {

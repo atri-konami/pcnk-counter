@@ -7,8 +7,11 @@ import {
   formatInvestmentDisplay,
   heldDisplayAriaLabel,
   heldDisplayModeLabel,
+  INVESTMENT_INCREMENTS,
   investmentDisplayAriaLabel,
   investmentDisplayModeLabel,
+  lastCopiedTotalSpins,
+  lastGameplayRecord,
   lendRateSelectOptions,
   needsNewBaseline,
   nextHeldDisplayMode,
@@ -42,6 +45,10 @@ function formatSavedAt(timestamp: number): string {
   });
 }
 
+function isAdjustRow(row: RecordRow): boolean {
+  return row.displayKind === "adjustHeld" || row.displayKind === "adjustInvestment";
+}
+
 function HistoryList({ rows }: { rows: RecordRow[] }) {
   if (rows.length === 0) {
     return <p className="empty">記録がありません。</p>;
@@ -51,7 +58,9 @@ function HistoryList({ rows }: { rows: RecordRow[] }) {
       {rows.map((row, index) => (
         <li key={`${row.totalSpins}-${row.displayKind}-${index}`} className={row.isStart ? "start" : ""}>
           <span className="row-index">{rowIndexLabel(row)}</span>
-          <span className="row-total">{row.totalSpins.toLocaleString("ja-JP")}</span>
+          <span className="row-total">
+            {isAdjustRow(row) ? "—" : row.totalSpins.toLocaleString("ja-JP")}
+          </span>
           <span className="row-delta">
             {row.delta === null ? "—" : `+${row.delta}`}
           </span>
@@ -124,6 +133,7 @@ export default function App() {
     storedBalls: String(state.settings.storedBalls),
     unitBalls: String(state.settings.unitBalls),
   });
+  const [heldAdjustInput, setHeldAdjustInput] = useState("");
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
@@ -142,8 +152,10 @@ export default function App() {
     [state],
   );
 
-  const isStart = state.records.length === 0;
+  const isStart = lastGameplayRecord(state.records) === undefined;
   const isBaseline = needsNewBaseline(state.records);
+  const lastRecord = state.records[state.records.length - 1];
+  const canUndoInvestment = lastRecord?.kind === "adjustInvestment";
   const cashIgnored =
     summary.playMode === "held" || summary.playMode === "remainder";
   const modeHint = playModeHint(
@@ -315,6 +327,54 @@ export default function App() {
     setError(null);
   }
 
+  function onAddInvestment(yen: number) {
+    setState((prev) => ({
+      ...prev,
+      records: [
+        ...prev.records,
+        {
+          totalSpins: lastCopiedTotalSpins(prev.records),
+          kind: "adjustInvestment",
+          cashYen: yen,
+        },
+      ],
+    }));
+    setError(null);
+  }
+
+  function undoLastInvestment() {
+    setState((prev) => {
+      const last = prev.records[prev.records.length - 1];
+      if (!last || last.kind !== "adjustInvestment") {
+        return prev;
+      }
+      return { ...prev, records: prev.records.slice(0, -1) };
+    });
+    setError(null);
+  }
+
+  function onSetHeld(event: FormEvent) {
+    event.preventDefault();
+    const held = parseNonNegativeInt(heldAdjustInput);
+    if (held === null) {
+      setError("持ち玉は0以上の整数を入力してください");
+      return;
+    }
+    setState((prev) => ({
+      ...prev,
+      records: [
+        ...prev.records,
+        {
+          totalSpins: lastCopiedTotalSpins(prev.records),
+          kind: "adjustHeld",
+          heldBalls: held,
+        },
+      ],
+    }));
+    setHeldAdjustInput("");
+    setError(null);
+  }
+
   function undoLast() {
     setState((prev) => ({ ...prev, records: prev.records.slice(0, -1) }));
     setError(null);
@@ -335,6 +395,7 @@ export default function App() {
     setState((prev) => archiveCurrentSession(prev));
     setInput("");
     setBorderInput("");
+    setHeldAdjustInput("");
     clearJackpotInputs();
     setJackpotOpen(false);
     setError(null);
@@ -419,6 +480,55 @@ export default function App() {
           <strong className="value">{investmentDisplay.value}</strong>
         </button>
       </section>
+
+      <details className="settings adjust">
+        <summary>投資額・持ち玉のセット</summary>
+        <div className="adjust-body">
+          <div className="adjust-block">
+            <span className="adjust-label">投資額</span>
+            <div className="adjust-buttons">
+              {INVESTMENT_INCREMENTS.map((yen) => (
+                <button
+                  key={yen}
+                  type="button"
+                  onClick={() => onAddInvestment(yen)}
+                >
+                  +{yen.toLocaleString("ja-JP")}
+                </button>
+              ))}
+              <button
+                type="button"
+                onClick={undoLastInvestment}
+                disabled={!canUndoInvestment}
+              >
+                Undo
+              </button>
+            </div>
+          </div>
+          <form className="adjust-block" onSubmit={onSetHeld}>
+            <label htmlFor="adjust-held">持ち玉</label>
+            <div className="entry-row">
+              <input
+                id="adjust-held"
+                type="number"
+                inputMode="numeric"
+                min={0}
+                step={1}
+                value={heldAdjustInput}
+                onChange={(e) => {
+                  setHeldAdjustInput(e.target.value);
+                  setError(null);
+                }}
+                placeholder="セットする持ち玉"
+                autoComplete="off"
+              />
+              <button type="submit" className="primary">
+                セット
+              </button>
+            </div>
+          </form>
+        </div>
+      </details>
 
       <label className="session-name">
         セッション名

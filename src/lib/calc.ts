@@ -13,7 +13,12 @@ export type AmountDisplay = {
   subvalue: string | null;
 };
 
-export type RecordKind = "start" | "play" | "jackpot";
+export type RecordKind =
+  | "start"
+  | "play"
+  | "jackpot"
+  | "adjustHeld"
+  | "adjustInvestment";
 
 export type RecordEntry = {
   totalSpins: number;
@@ -28,7 +33,9 @@ export type DisplayKind =
   | "paid"
   | "held"
   | "jackpot"
-  | "remainder";
+  | "remainder"
+  | "adjustHeld"
+  | "adjustInvestment";
 
 export type PlayMode = "start" | "held" | "remainder" | "stored" | "cash";
 
@@ -89,7 +96,40 @@ export const INVESTMENT_DISPLAY_MODES: InvestmentDisplayMode[] = [
   "yenWithoutFraction",
 ];
 
+export const INVESTMENT_INCREMENTS = [200, 500, 1000, 10000] as const;
+
 const AVERAGE_BASE_YEN = 1000;
+
+const GAMEPLAY_KINDS: RecordKind[] = ["start", "play", "jackpot"];
+
+function isGameplayKind(kind: RecordKind): boolean {
+  return GAMEPLAY_KINDS.includes(kind);
+}
+
+function gameplayRecordBefore(
+  records: RecordEntry[],
+  index: number,
+): RecordEntry | undefined {
+  for (let i = index - 1; i >= 0; i -= 1) {
+    if (isGameplayKind(records[i].kind)) {
+      return records[i];
+    }
+  }
+  return undefined;
+}
+
+export function lastGameplayRecord(
+  records: RecordEntry[],
+): RecordEntry | undefined {
+  return gameplayRecordBefore(records, records.length);
+}
+
+export function lastCopiedTotalSpins(records: RecordEntry[]): number {
+  if (records.length === 0) {
+    return 0;
+  }
+  return records[records.length - 1].totalSpins;
+}
 
 export function unitYenFromSettings(settings: Settings): number {
   const unitBalls = Math.max(1, Math.floor(settings.unitBalls) || 1);
@@ -262,7 +302,11 @@ export function toRecordEntry(value: unknown, index: number): RecordEntry | null
     return null;
   }
   const kind: RecordKind =
-    raw.kind === "jackpot" || raw.kind === "play" || raw.kind === "start"
+    raw.kind === "jackpot" ||
+    raw.kind === "play" ||
+    raw.kind === "start" ||
+    raw.kind === "adjustHeld" ||
+    raw.kind === "adjustInvestment"
       ? raw.kind
       : index === 0
         ? "start"
@@ -276,6 +320,18 @@ export function toRecordEntry(value: unknown, index: number): RecordEntry | null
     entry.heldBalls =
       typeof raw.heldBalls === "number" && Number.isInteger(raw.heldBalls) && raw.heldBalls >= 0
         ? raw.heldBalls
+        : 0;
+  }
+  if (kind === "adjustHeld") {
+    entry.heldBalls =
+      typeof raw.heldBalls === "number" && Number.isInteger(raw.heldBalls) && raw.heldBalls >= 0
+        ? raw.heldBalls
+        : 0;
+  }
+  if (kind === "adjustInvestment") {
+    entry.cashYen =
+      typeof raw.cashYen === "number" && Number.isInteger(raw.cashYen) && raw.cashYen >= 0
+        ? raw.cashYen
         : 0;
   }
   return entry;
@@ -292,9 +348,8 @@ export function parseRecordList(value: unknown): RecordEntry[] {
 }
 
 export function needsNewBaseline(records: RecordEntry[]): boolean {
-  return (
-    records.length === 0 || records[records.length - 1].kind === "jackpot"
-  );
+  const last = lastGameplayRecord(records);
+  return last === undefined || last.kind === "jackpot";
 }
 
 export function canAddSpin(records: RecordEntry[], next: number): boolean {
@@ -304,7 +359,8 @@ export function canAddSpin(records: RecordEntry[], next: number): boolean {
   if (needsNewBaseline(records)) {
     return true;
   }
-  return next >= records[records.length - 1].totalSpins;
+  const last = lastGameplayRecord(records);
+  return last === undefined || next >= last.totalSpins;
 }
 
 export function displayKindLabel(kind: DisplayKind): string {
@@ -321,6 +377,10 @@ export function displayKindLabel(kind: DisplayKind): string {
       return "当";
     case "remainder":
       return "端数";
+    case "adjustHeld":
+      return "持玉";
+    case "adjustInvestment":
+      return "投資";
   }
 }
 
@@ -333,6 +393,9 @@ export function rowIndexLabel(row: RecordRow): string {
   }
   if (row.displayKind === "remainder") {
     return "端数";
+  }
+  if (row.displayKind === "adjustHeld" || row.displayKind === "adjustInvestment") {
+    return "—";
   }
   return String(row.playIndex ?? "");
 }
@@ -377,13 +440,13 @@ export function resolveJackpotCash(
 }
 
 function currentPlayMode(
-  recordsLength: number,
+  hasGameplay: boolean,
   heldBalls: number,
   storedUnitsLeft: number,
   storedRemainder: number,
   unitBalls: number,
 ): PlayMode {
-  if (recordsLength === 0) {
+  if (!hasGameplay) {
     return "start";
   }
   if (heldBalls >= unitBalls) {
@@ -422,6 +485,28 @@ export function summarize(
   let playIndexCounter = 0;
 
   const rows: RecordRow[] = records.map((entry, i) => {
+    if (entry.kind === "adjustHeld") {
+      heldBalls = Math.max(0, Math.floor(entry.heldBalls ?? 0));
+      return {
+        totalSpins: entry.totalSpins,
+        delta: null,
+        isStart: false,
+        playIndex: null,
+        displayKind: "adjustHeld",
+        inAverage: false,
+      };
+    }
+    if (entry.kind === "adjustInvestment") {
+      investmentYen += Math.max(0, Math.floor(entry.cashYen ?? 0));
+      return {
+        totalSpins: entry.totalSpins,
+        delta: null,
+        isStart: false,
+        playIndex: null,
+        displayKind: "adjustInvestment",
+        inAverage: false,
+      };
+    }
     if (i === 0 || entry.kind === "start") {
       return {
         totalSpins: entry.totalSpins,
@@ -433,11 +518,11 @@ export function summarize(
       };
     }
 
-    const prev = records[i - 1];
+    const prevGameplay = gameplayRecordBefore(records, i);
     const delta =
-      prev.kind === "jackpot"
+      prevGameplay === undefined || prevGameplay.kind === "jackpot"
         ? null
-        : entry.totalSpins - prev.totalSpins;
+        : entry.totalSpins - prevGameplay.totalSpins;
 
     if (entry.kind === "jackpot") {
       const inHeldPlay = heldBalls > 0;
@@ -522,7 +607,7 @@ export function summarize(
   const investmentLabel =
     usedStoredBalls > 0 ? `貯玉${usedStoredBalls}発 + ${yenLabel}` : yenLabel;
   const playMode = currentPlayMode(
-    records.length,
+    lastGameplayRecord(records) !== undefined,
     heldBalls,
     storedUnitsLeft,
     storedRemainder,
