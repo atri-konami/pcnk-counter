@@ -1,4 +1,13 @@
-import { DEFAULT_SETTINGS, parseRecordList, type RecordEntry, type Settings } from "./calc";
+import {
+  DEFAULT_SETTINGS,
+  HELD_DISPLAY_MODES,
+  INVESTMENT_DISPLAY_MODES,
+  parseRecordList,
+  type HeldDisplayMode,
+  type InvestmentDisplayMode,
+  type RecordEntry,
+  type Settings,
+} from "./calc";
 
 const STORAGE_KEY = "pcnk-counter-state";
 
@@ -17,6 +26,8 @@ export type AppState = {
   sessionName: string;
   border: number | null;
   sessions: SavedSession[];
+  heldDisplayMode: HeldDisplayMode;
+  investmentDisplayMode: InvestmentDisplayMode;
 };
 
 export type SaveResult =
@@ -29,6 +40,8 @@ export const DEFAULT_STATE: AppState = {
   sessionName: "",
   border: null,
   sessions: [],
+  heldDisplayMode: "balls",
+  investmentDisplayMode: "ballsAndYen",
 };
 
 function emptyState(): AppState {
@@ -39,27 +52,48 @@ function emptyState(): AppState {
   };
 }
 
-function isSettings(value: unknown): value is Settings {
-  if (!value || typeof value !== "object") {
-    return false;
-  }
-  const s = value as Record<string, unknown>;
-  return (
-    typeof s.storedBalls === "number" &&
-    typeof s.unitBalls === "number" &&
-    typeof s.unitYen === "number"
-  );
+function parseHeldDisplayMode(value: unknown): HeldDisplayMode {
+  return HELD_DISPLAY_MODES.includes(value as HeldDisplayMode)
+    ? (value as HeldDisplayMode)
+    : "balls";
+}
+
+function parseInvestmentDisplayMode(value: unknown): InvestmentDisplayMode {
+  return INVESTMENT_DISPLAY_MODES.includes(value as InvestmentDisplayMode)
+    ? (value as InvestmentDisplayMode)
+    : "ballsAndYen";
 }
 
 function parseSettings(value: unknown): Settings {
-  if (!isSettings(value)) {
+  if (!value || typeof value !== "object") {
     return { ...DEFAULT_SETTINGS };
   }
-  return {
-    storedBalls: Math.max(0, Math.floor(value.storedBalls)),
-    unitBalls: Math.max(1, Math.floor(value.unitBalls) || 1),
-    unitYen: Math.max(0, Math.floor(value.unitYen)),
-  };
+  const s = value as Record<string, unknown>;
+  if (typeof s.storedBalls !== "number" || typeof s.unitBalls !== "number") {
+    return { ...DEFAULT_SETTINGS };
+  }
+  const storedBalls = Math.max(0, Math.floor(s.storedBalls));
+  const unitBalls = Math.max(1, Math.floor(s.unitBalls) || 1);
+
+  let lendRateYen = DEFAULT_SETTINGS.lendRateYen;
+  if (typeof s.lendRateYen === "number" && Number.isFinite(s.lendRateYen) && s.lendRateYen >= 0) {
+    lendRateYen = Math.floor(s.lendRateYen);
+  } else if (typeof s.unitYen === "number" && Number.isFinite(s.unitYen)) {
+    const unitYen = Math.max(0, Math.floor(s.unitYen));
+    const inferred = unitYen / unitBalls;
+    if (Number.isInteger(inferred) && inferred >= 0) {
+      lendRateYen = inferred;
+    }
+  }
+
+  const exchangeBalls =
+    typeof s.exchangeBalls === "number" &&
+    Number.isFinite(s.exchangeBalls) &&
+    s.exchangeBalls >= 1
+      ? Math.max(1, Math.floor(s.exchangeBalls) || 1)
+      : DEFAULT_SETTINGS.exchangeBalls;
+
+  return { storedBalls, unitBalls, lendRateYen, exchangeBalls };
 }
 
 function parseRecords(value: unknown): RecordEntry[] {
@@ -163,6 +197,8 @@ export function loadState(): AppState {
       sessionName: typeof data.sessionName === "string" ? data.sessionName : "",
       border: parseBorder(data.border),
       sessions,
+      heldDisplayMode: parseHeldDisplayMode(data.heldDisplayMode),
+      investmentDisplayMode: parseInvestmentDisplayMode(data.investmentDisplayMode),
     };
   } catch {
     return emptyState();

@@ -28,6 +28,26 @@
   padding: 14px 16px;
 }
 
+button.summary-card {
+  display: block;
+  width: 100%;
+  min-height: 0;
+  text-align: left;
+  cursor: pointer;
+  color: inherit;
+  font: inherit;
+  user-select: none;
+}
+
+button.summary-card:active {
+  filter: brightness(1.12);
+}
+
+button.summary-card:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+
 .summary-card.highlight {
   background: linear-gradient(160deg, #1f3b32, var(--panel));
 }
@@ -37,23 +57,40 @@
 }
 
 .summary-card .label {
-  display: block;
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 8px;
   color: var(--muted);
   font-size: 0.8rem;
   margin-bottom: 6px;
+  white-space: nowrap;
+}
+
+.summary-card .mode {
+  font-size: 0.75rem;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  color: var(--accent-2);
+  flex-shrink: 0;
 }
 
 .summary-card .value {
+  display: block;
   font-size: 1.45rem;
   font-variant-numeric: tabular-nums;
+  white-space: nowrap;
 }
 
 .summary-card .subvalue {
   display: block;
   margin-top: 4px;
   font-size: 1rem;
+  line-height: 1.3;
+  min-height: 1.3em;
   font-weight: 600;
   font-variant-numeric: tabular-nums;
+  white-space: nowrap;
 }
 
 .summary-card .subvalue.plus {
@@ -97,7 +134,8 @@
   margin-bottom: 16px;
 }
 
-input {
+input,
+select {
   width: 100%;
   border: 0;
   border-radius: 12px;
@@ -108,8 +146,26 @@ input {
   font-variant-numeric: tabular-nums;
 }
 
+select {
+  appearance: none;
+  background-image: linear-gradient(45deg, transparent 50%, var(--muted) 50%),
+    linear-gradient(135deg, var(--muted) 50%, transparent 50%);
+  background-position:
+    calc(100% - 18px) calc(50% - 3px),
+    calc(100% - 12px) calc(50% - 3px);
+  background-size: 6px 6px;
+  background-repeat: no-repeat;
+  padding-right: 32px;
+}
+
 input[type="text"] {
   font-variant-numeric: normal;
+}
+
+input.computed {
+  font-variant-numeric: tabular-nums;
+  cursor: default;
+  opacity: 0.85;
 }
 
 input:disabled {

@@ -1,7 +1,16 @@
 export type Settings = {
   storedBalls: number;
   unitBalls: number;
-  unitYen: number;
+  lendRateYen: number;
+  exchangeBalls: number;
+};
+
+export type HeldDisplayMode = "balls" | "yenWithFraction" | "yenWithoutFraction";
+export type InvestmentDisplayMode = "ballsAndYen" | "yenWithoutFraction";
+
+export type AmountDisplay = {
+  value: string;
+  subvalue: string | null;
 };
 
 export type RecordKind = "start" | "play" | "jackpot";
@@ -53,10 +62,165 @@ export type Summary = {
 export const DEFAULT_SETTINGS: Settings = {
   storedBalls: 0,
   unitBalls: 250,
-  unitYen: 1000,
+  lendRateYen: 4,
+  exchangeBalls: 280,
 };
 
+export const LEND_RATE_PRESETS: { yen: number; label: string }[] = [
+  { yen: 4, label: "4円" },
+  { yen: 1, label: "1円" },
+];
+
+export const EXCHANGE_RATE_PRESETS: { balls: number; label: string }[] = [
+  { balls: 280, label: "280玉 / 1000円" },
+  { balls: 250, label: "250玉（4円等価）" },
+  { balls: 1120, label: "1120玉 / 1000円" },
+  { balls: 1000, label: "1000玉（1円等価）" },
+];
+
+export const HELD_DISPLAY_MODES: HeldDisplayMode[] = [
+  "balls",
+  "yenWithoutFraction",
+  "yenWithFraction",
+];
+
+export const INVESTMENT_DISPLAY_MODES: InvestmentDisplayMode[] = [
+  "ballsAndYen",
+  "yenWithoutFraction",
+];
+
 const AVERAGE_BASE_YEN = 1000;
+
+export function unitYenFromSettings(settings: Settings): number {
+  const unitBalls = Math.max(1, Math.floor(settings.unitBalls) || 1);
+  const lendRateYen = Math.max(0, Math.floor(settings.lendRateYen));
+  return unitBalls * lendRateYen;
+}
+
+export function yenWithFraction(balls: number, exchangeBalls: number): number {
+  const rate = Math.max(1, Math.floor(exchangeBalls) || 1);
+  const n = Math.max(0, Math.floor(balls));
+  return Math.floor((n * AVERAGE_BASE_YEN) / rate);
+}
+
+export function yenWithoutFraction(
+  balls: number,
+  exchangeBalls: number,
+): { yen: number; remainderBalls: number } {
+  const rate = Math.max(1, Math.floor(exchangeBalls) || 1);
+  const n = Math.max(0, Math.floor(balls));
+  const units = Math.floor(n / rate);
+  return { yen: units * AVERAGE_BASE_YEN, remainderBalls: n % rate };
+}
+
+function formatYen(yen: number): string {
+  return `${yen.toLocaleString("ja-JP")}円`;
+}
+
+export function formatHeldDisplay(
+  heldBalls: number,
+  exchangeBalls: number,
+  mode: HeldDisplayMode,
+): AmountDisplay {
+  if (mode === "balls") {
+    return { value: `${heldBalls.toLocaleString("ja-JP")}玉`, subvalue: null };
+  }
+  if (mode === "yenWithFraction") {
+    return {
+      value: formatYen(yenWithFraction(heldBalls, exchangeBalls)),
+      subvalue: null,
+    };
+  }
+  const { yen, remainderBalls } = yenWithoutFraction(heldBalls, exchangeBalls);
+  return {
+    value: formatYen(yen),
+    subvalue:
+      remainderBalls > 0 ? `端玉${remainderBalls.toLocaleString("ja-JP")}発` : null,
+  };
+}
+
+export function formatInvestmentDisplay(
+  usedStoredBalls: number,
+  investmentYen: number,
+  exchangeBalls: number,
+  mode: InvestmentDisplayMode,
+): AmountDisplay {
+  const yenLabel = formatYen(investmentYen);
+  if (mode === "ballsAndYen") {
+    return {
+      value:
+        usedStoredBalls > 0
+          ? `貯玉${usedStoredBalls.toLocaleString("ja-JP")}発 + ${yenLabel}`
+          : yenLabel,
+      subvalue: null,
+    };
+  }
+  const storedYen = yenWithFraction(usedStoredBalls, exchangeBalls);
+  return { value: formatYen(storedYen + investmentYen), subvalue: null };
+}
+
+export function nextHeldDisplayMode(mode: HeldDisplayMode): HeldDisplayMode {
+  const index = HELD_DISPLAY_MODES.indexOf(mode);
+  const current = index < 0 ? 0 : index;
+  return HELD_DISPLAY_MODES[(current + 1) % HELD_DISPLAY_MODES.length];
+}
+
+export function nextInvestmentDisplayMode(
+  mode: InvestmentDisplayMode,
+): InvestmentDisplayMode {
+  const index = INVESTMENT_DISPLAY_MODES.indexOf(mode);
+  const current = index < 0 ? 0 : index;
+  return INVESTMENT_DISPLAY_MODES[(current + 1) % INVESTMENT_DISPLAY_MODES.length];
+}
+
+export function heldDisplayModeLabel(mode: HeldDisplayMode): string {
+  switch (mode) {
+    case "balls":
+      return "玉";
+    case "yenWithFraction":
+      return "円（端玉なし）";
+    case "yenWithoutFraction":
+      return "円（端玉あり）";
+  }
+}
+
+export function investmentDisplayModeLabel(mode: InvestmentDisplayMode): string {
+  switch (mode) {
+    case "ballsAndYen":
+      return "玉+円";
+    case "yenWithoutFraction":
+      return "円（端玉なし）";
+  }
+}
+
+export function heldDisplayAriaLabel(mode: HeldDisplayMode): string {
+  return `持ち玉（${heldDisplayModeLabel(mode)}）。タップで表示切替`;
+}
+
+export function investmentDisplayAriaLabel(mode: InvestmentDisplayMode): string {
+  return `投資額（${investmentDisplayModeLabel(mode)}）。タップで表示切替`;
+}
+
+export function lendRateSelectOptions(
+  current: number,
+): { yen: number; label: string }[] {
+  if (LEND_RATE_PRESETS.some((preset) => preset.yen === current)) {
+    return LEND_RATE_PRESETS;
+  }
+  return [...LEND_RATE_PRESETS, { yen: current, label: `${current}円` }];
+}
+
+export function exchangeRateSelectOptions(
+  current: number,
+): { balls: number; label: string }[] {
+  if (EXCHANGE_RATE_PRESETS.some((preset) => preset.balls === current)) {
+    return EXCHANGE_RATE_PRESETS;
+  }
+  return [
+    ...EXCHANGE_RATE_PRESETS,
+    { balls: current, label: `${current}玉 / 1000円` },
+  ];
+}
 
 export function parseNonNegativeInt(value: string): number | null {
   if (value.trim() === "") {
@@ -244,7 +408,7 @@ export function summarize(
 ): Summary {
   const storedBalls = Math.max(0, Math.floor(settings.storedBalls));
   const unitBalls = Math.max(1, Math.floor(settings.unitBalls) || 1);
-  const unitYen = Math.max(0, Math.floor(settings.unitYen));
+  const unitYen = unitYenFromSettings(settings);
 
   const freeRows = Math.floor(storedBalls / unitBalls);
   let storedUnitsLeft = freeRows;

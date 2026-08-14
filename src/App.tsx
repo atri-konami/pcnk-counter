@@ -2,15 +2,25 @@ import { useEffect, useMemo, useState, type FormEvent } from "react";
 import {
   canAddSpin,
   displayKindLabel,
+  exchangeRateSelectOptions,
+  formatHeldDisplay,
+  formatInvestmentDisplay,
+  heldDisplayAriaLabel,
+  heldDisplayModeLabel,
+  investmentDisplayAriaLabel,
+  investmentDisplayModeLabel,
+  lendRateSelectOptions,
   needsNewBaseline,
+  nextHeldDisplayMode,
+  nextInvestmentDisplayMode,
   parseNonNegativeInt,
   parseNonNegativeNumber,
   playModeHint,
   resolveJackpotCash,
   rowIndexLabel,
   summarize,
+  unitYenFromSettings,
   type RecordRow,
-  type Settings,
 } from "./lib/calc";
 import {
   archiveCurrentSession,
@@ -113,7 +123,6 @@ export default function App() {
   const [settingInputs, setSettingInputs] = useState({
     storedBalls: String(state.settings.storedBalls),
     unitBalls: String(state.settings.unitBalls),
-    unitYen: String(state.settings.unitYen),
   });
   const [error, setError] = useState<string | null>(null);
 
@@ -142,7 +151,24 @@ export default function App() {
     summary.playMode === "held" ? summary.heldBalls : summary.remainderBalls,
   );
 
-  function updateSetting<K extends keyof Settings>(key: K, raw: string) {
+  const heldDisplay = formatHeldDisplay(
+    summary.heldBalls,
+    state.settings.exchangeBalls,
+    state.heldDisplayMode,
+  );
+  const investmentDisplay = formatInvestmentDisplay(
+    summary.usedStoredBalls,
+    summary.investmentYen,
+    state.settings.exchangeBalls,
+    state.investmentDisplayMode,
+  );
+  const unitYen = unitYenFromSettings(state.settings);
+  const lendRateOptions = lendRateSelectOptions(state.settings.lendRateYen);
+  const exchangeRateOptions = exchangeRateSelectOptions(
+    state.settings.exchangeBalls,
+  );
+
+  function updateSetting(key: "storedBalls" | "unitBalls", raw: string) {
     setSettingInputs((prev) => ({ ...prev, [key]: raw }));
     const parsed = parseNonNegativeInt(raw);
     if (parsed === null) {
@@ -157,7 +183,7 @@ export default function App() {
     }));
   }
 
-  function commitSetting<K extends keyof Settings>(key: K) {
+  function commitSetting(key: "storedBalls" | "unitBalls") {
     setSettingInputs((prev) => {
       const parsed = parseNonNegativeInt(prev[key]);
       if (parsed === null) {
@@ -166,6 +192,45 @@ export default function App() {
       const value = key === "unitBalls" ? Math.max(1, parsed) : parsed;
       return { ...prev, [key]: String(value) };
     });
+  }
+
+  function updateLendRate(raw: string) {
+    const parsed = parseNonNegativeInt(raw);
+    if (parsed === null) {
+      return;
+    }
+    setState((prev) => ({
+      ...prev,
+      settings: { ...prev.settings, lendRateYen: parsed },
+    }));
+  }
+
+  function updateExchangeRate(raw: string) {
+    const parsed = parseNonNegativeInt(raw);
+    if (parsed === null) {
+      return;
+    }
+    setState((prev) => ({
+      ...prev,
+      settings: {
+        ...prev.settings,
+        exchangeBalls: Math.max(1, parsed),
+      },
+    }));
+  }
+
+  function cycleHeldDisplay() {
+    setState((prev) => ({
+      ...prev,
+      heldDisplayMode: nextHeldDisplayMode(prev.heldDisplayMode),
+    }));
+  }
+
+  function cycleInvestmentDisplay() {
+    setState((prev) => ({
+      ...prev,
+      investmentDisplayMode: nextInvestmentDisplayMode(prev.investmentDisplayMode),
+    }));
   }
 
   function updateBorder(raw: string) {
@@ -323,14 +388,36 @@ export default function App() {
             </span>
           ) : null}
         </div>
-        <div className="summary-card">
-          <span className="label">持ち玉</span>
-          <strong className="value">{summary.heldBalls.toLocaleString("ja-JP")}玉</strong>
-        </div>
-        <div className="summary-card wide">
-          <span className="label">投資額</span>
-          <strong className="value">{summary.investmentLabel}</strong>
-        </div>
+        <button
+          type="button"
+          className="summary-card"
+          onClick={cycleHeldDisplay}
+          aria-label={heldDisplayAriaLabel(state.heldDisplayMode)}
+        >
+          <span className="label">
+            持ち玉
+            <span className="mode">{heldDisplayModeLabel(state.heldDisplayMode)}</span>
+          </span>
+          <strong className="value">{heldDisplay.value}</strong>
+          <span
+            className="subvalue"
+            aria-hidden={heldDisplay.subvalue ? undefined : true}
+          >
+            {heldDisplay.subvalue ?? "\u00a0"}
+          </span>
+        </button>
+        <button
+          type="button"
+          className="summary-card wide"
+          onClick={cycleInvestmentDisplay}
+          aria-label={investmentDisplayAriaLabel(state.investmentDisplayMode)}
+        >
+          <span className="label">
+            投資額
+            <span className="mode">{investmentDisplayModeLabel(state.investmentDisplayMode)}</span>
+          </span>
+          <strong className="value">{investmentDisplay.value}</strong>
+        </button>
       </section>
 
       <label className="session-name">
@@ -479,7 +566,7 @@ export default function App() {
       </details>
 
       <details className="settings footer-settings">
-        <summary>設定（貯玉・基準玉数・投資単価・ボーダー）</summary>
+        <summary>設定（貯玉・基準玉数・貸出/換金・ボーダー）</summary>
         <div className="settings-grid">
           <label>
             貯玉（発）
@@ -506,15 +593,40 @@ export default function App() {
             />
           </label>
           <label>
+            貸出レート
+            <select
+              value={state.settings.lendRateYen}
+              onChange={(e) => updateLendRate(e.target.value)}
+            >
+              {lendRateOptions.map((option) => (
+                <option key={option.yen} value={option.yen}>
+                  {option.label}
+                </option>
+              ))}
+            </select>
+          </label>
+          <label>
+            換金レート
+            <select
+              value={state.settings.exchangeBalls}
+              onChange={(e) => updateExchangeRate(e.target.value)}
+            >
+              {exchangeRateOptions.map((option) => (
+                <option key={option.balls} value={option.balls}>
+                  {option.label}
+                </option>
+              ))}
+            </select>
+          </label>
+          <label>
             投資単価（円）
             <input
-              type="number"
-              inputMode="numeric"
-              min={0}
-              step={1}
-              value={settingInputs.unitYen}
-              onChange={(e) => updateSetting("unitYen", e.target.value)}
-              onBlur={() => commitSetting("unitYen")}
+              type="text"
+              className="computed"
+              value={unitYen.toLocaleString("ja-JP")}
+              readOnly
+              tabIndex={-1}
+              aria-readonly="true"
             />
           </label>
           <label>
@@ -531,7 +643,7 @@ export default function App() {
           </label>
         </div>
         <p className="hint">
-          貯玉は基準玉数で割った行数ぶん投資に含めません。端数の貯玉は持ち玉の端数と同じく平均対象外です。投資額の貯玉は消化した玉数です。大当たりと端数は平均に含めません。ボーダーはセッション保存時にリセットされます。
+          投資単価は基準玉数 × 貸出レートです。貯玉は基準玉数で割った行数ぶん投資に含めません。端数の貯玉は持ち玉の端数と同じく平均対象外です。投資額の貯玉は消化した玉数です。大当たりと端数は平均に含めません。ボーダーはセッション保存時にリセットされます。持ち玉と投資額はタップで表示を切り替えます。
         </p>
       </details>
     </div>
