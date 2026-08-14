@@ -411,6 +411,87 @@ export function rowTotalLabel(row: RecordRow): string {
   return row.totalSpins.toLocaleString("ja-JP");
 }
 
+export const HISTORY_GROUP_SIZE = 10;
+
+const HISTORY_GROUP_KINDS: DisplayKind[] = ["paid", "stored", "held"];
+
+export type HistoryListItem =
+  | { type: "single"; row: RecordRow; index: number }
+  | { type: "group"; rows: RecordRow[]; index: number };
+
+function isHistoryGroupKind(kind: DisplayKind): boolean {
+  return HISTORY_GROUP_KINDS.includes(kind);
+}
+
+export function groupHistoryRows(rows: RecordRow[]): HistoryListItem[] {
+  const items: HistoryListItem[] = [];
+  let i = 0;
+  while (i < rows.length) {
+    const kind = rows[i].displayKind;
+    if (!isHistoryGroupKind(kind)) {
+      items.push({ type: "single", row: rows[i], index: i });
+      i += 1;
+      continue;
+    }
+    let j = i;
+    while (j < rows.length && isHistoryGroupKind(rows[j].displayKind)) {
+      j += 1;
+    }
+    let offset = i;
+    while (offset + HISTORY_GROUP_SIZE <= j) {
+      items.push({
+        type: "group",
+        rows: rows.slice(offset, offset + HISTORY_GROUP_SIZE),
+        index: offset,
+      });
+      offset += HISTORY_GROUP_SIZE;
+    }
+    while (offset < j) {
+      items.push({ type: "single", row: rows[offset], index: offset });
+      offset += 1;
+    }
+    i = j;
+  }
+  return items;
+}
+
+export function groupedRowIndexLabel(rows: RecordRow[]): string {
+  const first = rows[0]?.playIndex;
+  const last = rows[rows.length - 1]?.playIndex;
+  if (first == null || last == null) {
+    return `×${rows.length}`;
+  }
+  return `${first}–${last}`;
+}
+
+export function groupedRowTotalLabel(rows: RecordRow[]): string {
+  const last = rows[rows.length - 1];
+  return last === undefined ? "—" : last.totalSpins.toLocaleString("ja-JP");
+}
+
+export function groupedRowDeltaLabel(rows: RecordRow[]): string {
+  const sum = rows.reduce((acc, row) => acc + (row.delta ?? 0), 0);
+  return `+${sum}`;
+}
+
+export function groupedRowKindClass(rows: RecordRow[]): DisplayKind | "mixed" {
+  const first = rows[0]?.displayKind;
+  if (first === undefined) {
+    return "mixed";
+  }
+  return rows.every((row) => row.displayKind === first) ? first : "mixed";
+}
+
+export function groupedRowKindLabel(rows: RecordRow[]): string {
+  const kinds: DisplayKind[] = [];
+  for (const row of rows) {
+    if (!kinds.includes(row.displayKind)) {
+      kinds.push(row.displayKind);
+    }
+  }
+  return kinds.map(displayKindLabel).join("・");
+}
+
 export function playModeHint(mode: PlayMode, balls: number): string | null {
   switch (mode) {
     case "held":

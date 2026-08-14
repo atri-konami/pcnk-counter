@@ -5,6 +5,12 @@ import {
   exchangeRateSelectOptions,
   formatHeldDisplay,
   formatInvestmentDisplay,
+  groupHistoryRows,
+  groupedRowDeltaLabel,
+  groupedRowIndexLabel,
+  groupedRowKindClass,
+  groupedRowKindLabel,
+  groupedRowTotalLabel,
   heldDisplayAriaLabel,
   heldDisplayModeLabel,
   INVESTMENT_INCREMENTS,
@@ -46,24 +52,69 @@ function formatSavedAt(timestamp: number): string {
   });
 }
 
+function HistoryRowCells({ row }: { row: RecordRow }) {
+  return (
+    <>
+      <span className="row-index">{rowIndexLabel(row)}</span>
+      <span className="row-total">{rowTotalLabel(row)}</span>
+      <span className="row-delta">
+        {row.delta === null ? "—" : `+${row.delta}`}
+      </span>
+      <span className={`row-kind ${row.displayKind}`}>
+        {displayKindLabel(row.displayKind)}
+      </span>
+    </>
+  );
+}
+
 function HistoryList({ rows }: { rows: RecordRow[] }) {
   if (rows.length === 0) {
     return <p className="empty">記録がありません。</p>;
   }
+  const items = groupHistoryRows(rows);
   return (
     <ol className="history-list">
-      {rows.map((row, index) => (
-        <li key={`${row.totalSpins}-${row.displayKind}-${index}`} className={row.isStart ? "start" : ""}>
-          <span className="row-index">{rowIndexLabel(row)}</span>
-          <span className="row-total">{rowTotalLabel(row)}</span>
-          <span className="row-delta">
-            {row.delta === null ? "—" : `+${row.delta}`}
-          </span>
-          <span className={`row-kind ${row.displayKind}`}>
-            {displayKindLabel(row.displayKind)}
-          </span>
-        </li>
-      ))}
+      {items.map((item) =>
+        item.type === "single" ? (
+          <li
+            key={`${item.row.totalSpins}-${item.row.displayKind}-${item.index}`}
+            className={item.row.isStart ? "start" : ""}
+          >
+            <HistoryRowCells row={item.row} />
+          </li>
+        ) : (
+          <li
+            key={`${item.rows[0].totalSpins}-${item.rows[0].displayKind}-${item.index}-group`}
+            className="history-group"
+          >
+            <details>
+              <summary>
+                <span className="row-index">
+                  {groupedRowIndexLabel(item.rows)}
+                </span>
+                <span className="row-total">
+                  {groupedRowTotalLabel(item.rows)}
+                </span>
+                <span className="row-delta">
+                  {groupedRowDeltaLabel(item.rows)}
+                </span>
+                <span className={`row-kind ${groupedRowKindClass(item.rows)}`}>
+                  {groupedRowKindLabel(item.rows)}
+                </span>
+              </summary>
+              <ol className="history-group-rows">
+                {item.rows.map((row, offset) => (
+                  <li
+                    key={`${row.totalSpins}-${row.displayKind}-${item.index + offset}`}
+                  >
+                    <HistoryRowCells row={row} />
+                  </li>
+                ))}
+              </ol>
+            </details>
+          </li>
+        ),
+      )}
     </ol>
   );
 }
@@ -431,18 +482,23 @@ export default function App() {
       <section className="summary" aria-label="集計">
         <div className="summary-card highlight">
           <span className="label">平均</span>
-          <strong className="value">{summary.averageLabel}</strong>
-          {summary.borderDiffLabel ? (
-            <span
-              className={`subvalue ${
-                summary.borderDiff != null && summary.borderDiff >= 0
-                  ? "plus"
-                  : "minus"
-              }`}
-            >
-              {summary.borderDiffLabel}
-            </span>
-          ) : null}
+          <div className="value-row">
+            <strong className="value">{summary.averageLabel}</strong>
+            {summary.borderDiffLabel ? (
+              <span
+                className={`subvalue ${
+                  summary.borderDiff != null && summary.borderDiff >= 0
+                    ? "plus"
+                    : "minus"
+                }`}
+              >
+                {summary.borderDiffLabel}
+              </span>
+            ) : null}
+          </div>
+          <span className="subvalue">
+            {summary.totalDelta.toLocaleString("ja-JP")}回転
+          </span>
         </div>
         <button
           type="button"

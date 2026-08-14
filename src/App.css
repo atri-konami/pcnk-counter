@@ -82,6 +82,17 @@ button.summary-card:focus-visible {
   white-space: nowrap;
 }
 
+.summary-card .value-row {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+}
+
+.summary-card .value-row .subvalue {
+  margin-top: 0;
+  flex-shrink: 0;
+}
+
 .summary-card .subvalue {
   display: block;
   margin-top: 4px;
@@ -294,15 +305,75 @@ button.danger {
   gap: 8px;
 }
 
-.history-list li {
+.history-list > li,
+.history-group-rows > li {
   display: grid;
-  grid-template-columns: 4.5em 1fr auto auto;
+  grid-template-columns: 5.5em 1fr auto auto;
   gap: 10px;
   align-items: center;
   background: var(--panel);
   border-radius: 12px;
   padding: 12px 14px;
   font-variant-numeric: tabular-nums;
+}
+
+.history-list > li.history-group {
+  display: block;
+  padding: 0;
+  overflow: hidden;
+}
+
+.history-group summary {
+  display: grid;
+  grid-template-columns: 5.5em 1fr auto auto;
+  gap: 10px;
+  align-items: center;
+  padding: 12px 14px 12px 28px;
+  cursor: pointer;
+  list-style: none;
+  font-variant-numeric: tabular-nums;
+  position: relative;
+}
+
+.history-group summary::-webkit-details-marker,
+.history-group summary::marker {
+  display: none;
+  content: "";
+}
+
+.history-group summary::before {
+  content: "";
+  position: absolute;
+  left: 12px;
+  top: 50%;
+  width: 0.4em;
+  height: 0.4em;
+  border-right: 2px solid var(--muted);
+  border-bottom: 2px solid var(--muted);
+  transform: translateY(-70%) rotate(-45deg);
+}
+
+.history-group details[open] summary::before {
+  transform: translateY(-50%) rotate(45deg);
+}
+
+.history-group summary:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: -2px;
+}
+
+.history-group-rows {
+  list-style: none;
+  margin: 0;
+  padding: 0 10px 10px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.history-group-rows > li {
+  background: var(--panel-2);
+  padding: 10px 12px;
 }
 
 .row-index {
@@ -418,7 +489,7 @@ button.danger {
   margin-top: 12px;
 }
 
-.session-item .history-list li {
+.session-item .history-list > li {
   background: var(--panel);
 }
 
