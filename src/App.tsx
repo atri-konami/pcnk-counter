@@ -67,7 +67,53 @@ function HistoryRowCells({ row }: { row: RecordRow }) {
   );
 }
 
-function HistoryList({ rows }: { rows: RecordRow[] }) {
+function JackpotSnapshotDetail({
+  snapshot,
+  exchangeBalls,
+}: {
+  snapshot: NonNullable<RecordRow["snapshot"]>;
+  exchangeBalls: number;
+}) {
+  const heldDisplay = formatHeldDisplay(
+    snapshot.heldBalls,
+    exchangeBalls,
+    "balls",
+  );
+  const investmentDisplay = formatInvestmentDisplay(
+    snapshot.usedStoredBalls,
+    snapshot.investmentYen,
+    exchangeBalls,
+    "ballsAndYen",
+  );
+  const investmentYenDisplay = formatInvestmentDisplay(
+    snapshot.usedStoredBalls,
+    snapshot.investmentYen,
+    exchangeBalls,
+    "yenWithoutFraction",
+  );
+  return (
+    <div className="history-jackpot-detail">
+      <div className="history-jackpot-stat">
+        <span className="label">投資額</span>
+        <strong>
+          {investmentDisplay.value}（{investmentYenDisplay.value}）
+        </strong>
+      </div>
+      <div className="history-jackpot-stat">
+        <span className="label">持ち玉</span>
+        <strong>{heldDisplay.value}</strong>
+      </div>
+    </div>
+  );
+}
+
+function HistoryList({
+  rows,
+  exchangeBalls,
+}: {
+  rows: RecordRow[];
+  exchangeBalls: number;
+}) {
   if (rows.length === 0) {
     return <p className="empty">記録がありません。</p>;
   }
@@ -76,12 +122,31 @@ function HistoryList({ rows }: { rows: RecordRow[] }) {
     <ol className="history-list">
       {items.map((item) =>
         item.type === "single" ? (
-          <li
-            key={`${item.row.totalSpins}-${item.row.displayKind}-${item.index}`}
-            className={item.row.isStart ? "start" : ""}
-          >
-            <HistoryRowCells row={item.row} />
-          </li>
+          item.row.displayKind === "jackpot" && item.row.snapshot ? (
+            <li
+              key={`${item.row.totalSpins}-${item.row.displayKind}-${item.index}`}
+              className="history-jackpot"
+            >
+              <details>
+                <summary aria-label="大当たり終了時点の投資額と持ち玉を表示">
+                  <div className="history-jackpot-head">
+                    <HistoryRowCells row={item.row} />
+                  </div>
+                </summary>
+                <JackpotSnapshotDetail
+                  snapshot={item.row.snapshot}
+                  exchangeBalls={exchangeBalls}
+                />
+              </details>
+            </li>
+          ) : (
+            <li
+              key={`${item.row.totalSpins}-${item.row.displayKind}-${item.index}`}
+              className={item.row.isStart ? "start" : ""}
+            >
+              <HistoryRowCells row={item.row} />
+            </li>
+          )
         ) : (
           <li
             key={`${item.rows[0].totalSpins}-${item.rows[0].displayKind}-${item.index}-group`}
@@ -147,7 +212,10 @@ function PastSessionItem({
             {summary.investmentLabel}
           </span>
         </summary>
-        <HistoryList rows={summary.rows} />
+        <HistoryList
+          rows={summary.rows}
+          exchangeBalls={session.settings.exchangeBalls}
+        />
         <button
           type="button"
           className="danger"
@@ -216,6 +284,10 @@ export default function App() {
     state.settings.exchangeBalls,
     state.heldDisplayMode,
   );
+  const heldStoredSubvalue =
+    state.heldDisplayMode === "balls" && summary.remainingStoredBalls > 0
+      ? `残り貯玉${summary.remainingStoredBalls.toLocaleString("ja-JP")}発`
+      : null;
   const investmentDisplay = formatInvestmentDisplay(
     summary.usedStoredBalls,
     summary.investmentYen,
@@ -515,9 +587,11 @@ export default function App() {
           <strong className="value">{heldDisplay.value}</strong>
           <span
             className="subvalue"
-            aria-hidden={heldDisplay.subvalue ? undefined : true}
+            aria-hidden={
+              heldStoredSubvalue || heldDisplay.subvalue ? undefined : true
+            }
           >
-            {heldDisplay.subvalue ?? "\u00a0"}
+            {heldStoredSubvalue ?? heldDisplay.subvalue ?? "\u00a0"}
           </span>
         </button>
         <button
@@ -707,7 +781,10 @@ export default function App() {
         {summary.rows.length === 0 ? (
           <p className="empty">まだ記録がありません。開始回転数を入力してください。</p>
         ) : (
-          <HistoryList rows={summary.rows} />
+          <HistoryList
+            rows={summary.rows}
+            exchangeBalls={state.settings.exchangeBalls}
+          />
         )}
       </section>
 

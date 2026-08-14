@@ -47,6 +47,11 @@ export type RecordRow = {
   displayKind: DisplayKind;
   inAverage: boolean;
   amount: number | null;
+  snapshot?: {
+    heldBalls: number;
+    investmentYen: number;
+    usedStoredBalls: number;
+  };
 };
 
 export type Summary = {
@@ -65,6 +70,7 @@ export type Summary = {
   rows: RecordRow[];
   playMode: PlayMode;
   remainderBalls: number;
+  remainingStoredBalls: number;
 };
 
 export const DEFAULT_SETTINGS: Settings = {
@@ -643,6 +649,7 @@ export function summarize(
         displayKind: "jackpot",
         inAverage: false,
         amount: null,
+        snapshot: { heldBalls, investmentYen, usedStoredBalls },
       };
     }
 
@@ -717,6 +724,7 @@ export function summarize(
       : heldBalls === 0 && storedUnitsLeft === 0
         ? storedRemainder
         : 0;
+  const remainingStoredBalls = storedUnitsLeft * unitBalls + storedRemainder;
 
   return {
     playCount: includedCount,
@@ -734,5 +742,6 @@ export function summarize(
     rows,
     playMode,
     remainderBalls,
+    remainingStoredBalls,
   };
 }

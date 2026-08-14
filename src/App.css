@@ -336,13 +336,15 @@ button.danger {
   font-variant-numeric: tabular-nums;
 }
 
-.history-list > li.history-group {
+.history-list > li.history-group,
+.history-list > li.history-jackpot {
   display: block;
   padding: 0;
   overflow: hidden;
 }
 
-.history-group summary {
+.history-group summary,
+.history-jackpot summary {
   display: block;
   padding: 0;
   cursor: pointer;
@@ -350,7 +352,8 @@ button.danger {
   position: relative;
 }
 
-.history-group-head {
+.history-group-head,
+.history-jackpot-head {
   display: grid;
   grid-template-columns: 5.5em 1fr auto auto;
   gap: 10px;
@@ -361,17 +364,21 @@ button.danger {
   font-variant-numeric: tabular-nums;
 }
 
-.history-group-head .row-kind {
+.history-group-head .row-kind,
+.history-jackpot-head .row-kind {
   white-space: nowrap;
 }
 
 .history-group summary::-webkit-details-marker,
-.history-group summary::marker {
+.history-group summary::marker,
+.history-jackpot summary::-webkit-details-marker,
+.history-jackpot summary::marker {
   display: none;
   content: "";
 }
 
-.history-group summary::before {
+.history-group summary::before,
+.history-jackpot summary::before {
   content: "";
   position: absolute;
   left: 12px;
@@ -383,13 +390,48 @@ button.danger {
   transform: translateY(-70%) rotate(-45deg);
 }
 
-.history-group details[open] summary::before {
+.history-group details[open] summary::before,
+.history-jackpot details[open] summary::before {
   transform: translateY(-50%) rotate(45deg);
 }
 
-.history-group summary:focus-visible {
+.history-group summary:focus-visible,
+.history-jackpot summary:focus-visible {
   outline: 2px solid var(--accent);
   outline-offset: -2px;
+}
+
+.history-jackpot-detail {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+  margin: 0 10px 10px;
+  padding: 10px 12px;
+  background: var(--panel-2);
+  border-radius: 10px;
+}
+
+.history-jackpot-stat {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+.history-jackpot-stat .label {
+  color: var(--muted);
+  font-size: 0.75rem;
+}
+
+.history-jackpot-stat strong {
+  font-variant-numeric: tabular-nums;
+  font-size: 0.95rem;
+  overflow-wrap: anywhere;
+}
+
+.history-jackpot-stat .subvalue {
+  color: var(--muted);
+  font-size: 0.75rem;
 }
 
 .history-group-rows {
