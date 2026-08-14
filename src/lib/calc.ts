@@ -46,6 +46,7 @@ export type RecordRow = {
   playIndex: number | null;
   displayKind: DisplayKind;
   inAverage: boolean;
+  amount: number | null;
 };
 
 export type Summary = {
@@ -400,6 +401,16 @@ export function rowIndexLabel(row: RecordRow): string {
   return String(row.playIndex ?? "");
 }
 
+export function rowTotalLabel(row: RecordRow): string {
+  if (row.displayKind === "adjustHeld") {
+    return `${(row.amount ?? 0).toLocaleString("ja-JP")}玉`;
+  }
+  if (row.displayKind === "adjustInvestment") {
+    return `+${(row.amount ?? 0).toLocaleString("ja-JP")}円`;
+  }
+  return row.totalSpins.toLocaleString("ja-JP");
+}
+
 export function playModeHint(mode: PlayMode, balls: number): string | null {
   switch (mode) {
     case "held":
@@ -494,10 +505,12 @@ export function summarize(
         playIndex: null,
         displayKind: "adjustHeld",
         inAverage: false,
+        amount: heldBalls,
       };
     }
     if (entry.kind === "adjustInvestment") {
-      investmentYen += Math.max(0, Math.floor(entry.cashYen ?? 0));
+      const yen = Math.max(0, Math.floor(entry.cashYen ?? 0));
+      investmentYen += yen;
       return {
         totalSpins: entry.totalSpins,
         delta: null,
@@ -505,6 +518,7 @@ export function summarize(
         playIndex: null,
         displayKind: "adjustInvestment",
         inAverage: false,
+        amount: yen,
       };
     }
     if (i === 0 || entry.kind === "start") {
@@ -515,6 +529,7 @@ export function summarize(
         playIndex: null,
         displayKind: "start",
         inAverage: false,
+        amount: null,
       };
     }
 
@@ -546,6 +561,7 @@ export function summarize(
         playIndex: null,
         displayKind: "jackpot",
         inAverage: false,
+        amount: null,
       };
     }
 
@@ -590,6 +606,7 @@ export function summarize(
       playIndex: inAverage && delta !== null ? playIndexCounter : null,
       displayKind,
       inAverage,
+      amount: null,
     };
   });
 

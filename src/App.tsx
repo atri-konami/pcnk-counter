@@ -21,6 +21,7 @@ import {
   playModeHint,
   resolveJackpotCash,
   rowIndexLabel,
+  rowTotalLabel,
   summarize,
   unitYenFromSettings,
   type RecordRow,
@@ -45,10 +46,6 @@ function formatSavedAt(timestamp: number): string {
   });
 }
 
-function isAdjustRow(row: RecordRow): boolean {
-  return row.displayKind === "adjustHeld" || row.displayKind === "adjustInvestment";
-}
-
 function HistoryList({ rows }: { rows: RecordRow[] }) {
   if (rows.length === 0) {
     return <p className="empty">記録がありません。</p>;
@@ -58,9 +55,7 @@ function HistoryList({ rows }: { rows: RecordRow[] }) {
       {rows.map((row, index) => (
         <li key={`${row.totalSpins}-${row.displayKind}-${index}`} className={row.isStart ? "start" : ""}>
           <span className="row-index">{rowIndexLabel(row)}</span>
-          <span className="row-total">
-            {isAdjustRow(row) ? "—" : row.totalSpins.toLocaleString("ja-JP")}
-          </span>
+          <span className="row-total">{rowTotalLabel(row)}</span>
           <span className="row-delta">
             {row.delta === null ? "—" : `+${row.delta}`}
           </span>
