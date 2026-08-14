@@ -47,6 +47,7 @@ export type Summary = {
   investmentLabel: string;
   rows: RecordRow[];
   playMode: PlayMode;
+  remainderBalls: number;
 };
 
 export const DEFAULT_SETTINGS: Settings = {
@@ -172,12 +173,12 @@ export function rowIndexLabel(row: RecordRow): string {
   return String(row.playIndex ?? "");
 }
 
-export function playModeHint(mode: PlayMode, heldBalls: number): string | null {
+export function playModeHint(mode: PlayMode, balls: number): string | null {
   switch (mode) {
     case "held":
-      return `持ち玉遊技中（残り${heldBalls.toLocaleString("ja-JP")}玉）。記録しても投資は増えず、持ち玉から減算します。`;
+      return `持ち玉遊技中（残り${balls.toLocaleString("ja-JP")}玉）。記録しても投資は増えず、持ち玉から減算します。`;
     case "remainder":
-      return `端数残り${heldBalls.toLocaleString("ja-JP")}玉。打ち切ったら回転数を記録します（平均対象外）。`;
+      return `端数残り${balls.toLocaleString("ja-JP")}玉。打ち切ったら回転数を記録します（平均対象外）。`;
     case "stored":
       return "貯玉遊技中。大当たり時の現金は未入力のままで、貯玉を基準玉数ぶん加算します。";
     case "cash":
@@ -215,6 +216,7 @@ function currentPlayMode(
   recordsLength: number,
   heldBalls: number,
   storedUnitsLeft: number,
+  storedRemainder: number,
   unitBalls: number,
 ): PlayMode {
   if (recordsLength === 0) {
@@ -228,6 +230,9 @@ function currentPlayMode(
   }
   if (storedUnitsLeft > 0) {
     return "stored";
+  }
+  if (storedRemainder > 0) {
+    return "remainder";
   }
   return "cash";
 }
@@ -243,6 +248,7 @@ export function summarize(
 
   const freeRows = Math.floor(storedBalls / unitBalls);
   let storedUnitsLeft = freeRows;
+  let storedRemainder = storedBalls % unitBalls;
   let heldBalls = 0;
   let usedStoredBalls = 0;
   let investmentYen = 0;
@@ -271,7 +277,11 @@ export function summarize(
 
     if (entry.kind === "jackpot") {
       const inHeldPlay = heldBalls > 0;
-      if (!inHeldPlay) {
+      const inStoredRemainder =
+        !inHeldPlay && storedUnitsLeft === 0 && storedRemainder > 0;
+      if (inStoredRemainder) {
+        storedRemainder = 0;
+      } else if (!inHeldPlay) {
         if (storedUnitsLeft > 0 && entry.cashYen == null) {
           storedUnitsLeft -= 1;
           usedStoredBalls += unitBalls;
@@ -306,6 +316,11 @@ export function summarize(
       usedStoredBalls += unitBalls;
       displayKind = "stored";
       inAverage = true;
+    } else if (storedRemainder > 0) {
+      usedStoredBalls += storedRemainder;
+      storedRemainder = 0;
+      displayKind = "remainder";
+      inAverage = false;
     } else {
       investmentYen += unitYen;
       paidRows += 1;
@@ -342,7 +357,19 @@ export function summarize(
   const yenLabel = `${investmentYen.toLocaleString("ja-JP")}円`;
   const investmentLabel =
     usedStoredBalls > 0 ? `貯玉${usedStoredBalls}発 + ${yenLabel}` : yenLabel;
-  const playMode = currentPlayMode(records.length, heldBalls, storedUnitsLeft, unitBalls);
+  const playMode = currentPlayMode(
+    records.length,
+    heldBalls,
+    storedUnitsLeft,
+    storedRemainder,
+    unitBalls,
+  );
+  const remainderBalls =
+    heldBalls > 0 && heldBalls < unitBalls
+      ? heldBalls
+      : heldBalls === 0 && storedUnitsLeft === 0
+        ? storedRemainder
+        : 0;
 
   return {
     playCount: includedCount,
@@ -359,5 +386,6 @@ export function summarize(
     investmentLabel,
     rows,
     playMode,
+    remainderBalls,
   };
 }

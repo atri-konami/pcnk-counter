@@ -137,7 +137,10 @@ export default function App() {
   const isBaseline = needsNewBaseline(state.records);
   const cashIgnored =
     summary.playMode === "held" || summary.playMode === "remainder";
-  const modeHint = playModeHint(summary.playMode, summary.heldBalls);
+  const modeHint = playModeHint(
+    summary.playMode,
+    summary.playMode === "held" ? summary.heldBalls : summary.remainderBalls,
+  );
 
   function updateSetting<K extends keyof Settings>(key: K, raw: string) {
     setSettingInputs((prev) => ({ ...prev, [key]: raw }));
@@ -528,7 +531,7 @@ export default function App() {
           </label>
         </div>
         <p className="hint">
-          貯玉は基準玉数で割った行数ぶん投資に含めません。投資額の貯玉は消化した玉数です。大当たりと端数は平均に含めません。ボーダーはセッション保存時にリセットされます。
+          貯玉は基準玉数で割った行数ぶん投資に含めません。端数の貯玉は持ち玉の端数と同じく平均対象外です。投資額の貯玉は消化した玉数です。大当たりと端数は平均に含めません。ボーダーはセッション保存時にリセットされます。
         </p>
       </details>
     </div>
