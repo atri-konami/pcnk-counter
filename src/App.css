@@ -1,7 +1,8 @@
 .app {
   max-width: 640px;
   margin: 0 auto;
-  padding: 20px 16px 48px;
+  padding: calc(20px + env(safe-area-inset-top)) calc(16px + env(safe-area-inset-right))
+    calc(48px + env(safe-area-inset-bottom)) calc(16px + env(safe-area-inset-left));
 }
 
 .header h1 {

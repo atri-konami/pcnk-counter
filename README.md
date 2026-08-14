@@ -18,6 +18,15 @@
 - 貯玉・基準玉数・貸出/換金レート・履歴はブラウザの localStorage に保存する
 - セッションに名前をつけて保存し、過去セッションを後から閲覧・削除できる
 
+## ホーム画面に追加（PWA）
+
+本番（`https://atri-konami.github.io/pcnk-counter/`）を開いて、ブラウザのメニューからホーム画面に追加すると、アドレスバーのない独立した窓で使えます。
+
+- Android Chrome: メニュー（︙）→「アプリをインストール」または「ホーム画面に追加」
+- iPhone Safari: 共有 →「ホーム画面に追加」
+
+LAN の `docker compose` 開発サーバは HTTPS ではないため、インストールできるかは端末・ブラウザ次第です。インストールの確認は本番 URL で行ってください。
+
 ## 開発（Docker + WSL）
 
 WSL の Ubuntu で、プロジェクトディレクトリに入って起動します。
@@ -27,7 +36,15 @@ cd ~/hobby/pcnk-counter
 docker compose up
 ```
 
-ブラウザで http://localhost:5173/pcnk-counter/ を開きます。
+同じ PC では http://localhost:5173/pcnk-counter/ を開きます。
+
+同じ Wi-Fi のスマホなどからは、Windows 側の LAN IPv4（`ipconfig` の「ワイヤレス LAN アダプター」など）で開けます。
+
+```text
+http://<PCのLAN-IP>:5173/pcnk-counter/
+```
+
+コンテナ内の Network URL（`172.x` など）は使わないでください。届かないときは Windows ファイアウォールで TCP 5173 の受信を許可し、WSL2 の NAT 環境なら [LAN から WSL への転送](https://learn.microsoft.com/ja-jp/windows/wsl/networking#accessing-a-wsl-2-distribution-from-your-local-area-network-lan) が必要です。
 
 ## デプロイ
 
