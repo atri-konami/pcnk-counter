@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState, type FormEvent } from "react";
 import {
   canAddSpin,
   displayKindLabel,
+  needsNewBaseline,
   parseNonNegativeInt,
   parseNonNegativeNumber,
   playModeHint,
@@ -105,9 +106,15 @@ export default function App() {
   const [jackpotSpins, setJackpotSpins] = useState("");
   const [jackpotCash, setJackpotCash] = useState("");
   const [jackpotHeld, setJackpotHeld] = useState("");
+  const [jackpotOpen, setJackpotOpen] = useState(false);
   const [borderInput, setBorderInput] = useState(() =>
     formatBorderInput(state.border),
   );
+  const [settingInputs, setSettingInputs] = useState({
+    storedBalls: String(state.settings.storedBalls),
+    unitBalls: String(state.settings.unitBalls),
+    unitYen: String(state.settings.unitYen),
+  });
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
@@ -127,11 +134,13 @@ export default function App() {
   );
 
   const isStart = state.records.length === 0;
+  const isBaseline = needsNewBaseline(state.records);
   const cashIgnored =
     summary.playMode === "held" || summary.playMode === "remainder";
   const modeHint = playModeHint(summary.playMode, summary.heldBalls);
 
   function updateSetting<K extends keyof Settings>(key: K, raw: string) {
+    setSettingInputs((prev) => ({ ...prev, [key]: raw }));
     const parsed = parseNonNegativeInt(raw);
     if (parsed === null) {
       return;
@@ -143,6 +152,17 @@ export default function App() {
         [key]: key === "unitBalls" ? Math.max(1, parsed) : parsed,
       },
     }));
+  }
+
+  function commitSetting<K extends keyof Settings>(key: K) {
+    setSettingInputs((prev) => {
+      const parsed = parseNonNegativeInt(prev[key]);
+      if (parsed === null) {
+        return { ...prev, [key]: String(state.settings[key]) };
+      }
+      const value = key === "unitBalls" ? Math.max(1, parsed) : parsed;
+      return { ...prev, [key]: String(value) };
+    });
   }
 
   function updateBorder(raw: string) {
@@ -181,7 +201,7 @@ export default function App() {
         ...prev.records,
         {
           totalSpins: next,
-          kind: prev.records.length === 0 ? "start" : "play",
+          kind: needsNewBaseline(prev.records) ? "start" : "play",
         },
       ],
     }));
@@ -223,6 +243,7 @@ export default function App() {
       ],
     }));
     clearJackpotInputs();
+    setJackpotOpen(false);
     setError(null);
   }
 
@@ -247,6 +268,7 @@ export default function App() {
     setInput("");
     setBorderInput("");
     clearJackpotInputs();
+    setJackpotOpen(false);
     setError(null);
   }
 
@@ -262,13 +284,15 @@ export default function App() {
     setError(null);
   }
 
-  const spinsLabel = isStart
+  const spinsLabel = isBaseline
     ? "開始回転数"
     : summary.playMode === "remainder"
-      ? "端数（ハズレ）"
+      ? "端数"
       : "総回転数";
-  const spinsPlaceholder = isStart
-    ? "開始時の総回転数"
+  const spinsPlaceholder = isBaseline
+    ? isStart
+      ? "開始時の総回転数"
+      : "リセット後の開始回転数"
     : summary.playMode === "remainder"
       ? "打ち切ったあとの総回転数"
       : "データカウンターの総回転数";
@@ -320,60 +344,6 @@ export default function App() {
         />
       </label>
 
-      <details className="settings">
-        <summary>設定（貯玉・基準玉数・投資単価・ボーダー）</summary>
-        <div className="settings-grid">
-          <label>
-            貯玉（発）
-            <input
-              type="number"
-              inputMode="numeric"
-              min={0}
-              step={1}
-              value={state.settings.storedBalls}
-              onChange={(e) => updateSetting("storedBalls", e.target.value)}
-            />
-          </label>
-          <label>
-            基準玉数
-            <input
-              type="number"
-              inputMode="numeric"
-              min={1}
-              step={1}
-              value={state.settings.unitBalls}
-              onChange={(e) => updateSetting("unitBalls", e.target.value)}
-            />
-          </label>
-          <label>
-            投資単価（円）
-            <input
-              type="number"
-              inputMode="numeric"
-              min={0}
-              step={1}
-              value={state.settings.unitYen}
-              onChange={(e) => updateSetting("unitYen", e.target.value)}
-            />
-          </label>
-          <label>
-            ボーダー（回転/k）
-            <input
-              type="number"
-              inputMode="decimal"
-              min={0}
-              step={0.1}
-              value={borderInput}
-              onChange={(e) => updateBorder(e.target.value)}
-              placeholder="未入力"
-            />
-          </label>
-        </div>
-        <p className="hint">
-          貯玉は基準玉数で割った行数ぶん投資に含めません。投資額の貯玉は消化した玉数です。大当たりと端数ハズレは平均に含めません。ボーダーはセッション保存時にリセットされます。
-        </p>
-      </details>
-
       <form className="entry" onSubmit={onAdd}>
         <label htmlFor="spins">{spinsLabel}</label>
         <div className="entry-row">
@@ -395,64 +365,77 @@ export default function App() {
             追加
           </button>
         </div>
+        {isBaseline && !isStart ? (
+          <p className="hint">
+            大当たり後は回転数がリセットされるため、開始時と同様に新しい開始回転数を入力してください。
+          </p>
+        ) : null}
         {modeHint ? <p className="hint">{modeHint}</p> : null}
       </form>
 
       {!isStart ? (
-        <form className="entry jackpot-entry" onSubmit={onAddJackpot}>
-          <p className="jackpot-heading">大当たり</p>
-          <label htmlFor="jackpot-spins">大当たり時の総回転数</label>
-          <input
-            id="jackpot-spins"
-            type="number"
-            inputMode="numeric"
-            min={0}
-            step={1}
-            value={jackpotSpins}
-            onChange={(e) => {
-              setJackpotSpins(e.target.value);
-              setError(null);
-            }}
-            placeholder="大当たりしたときの総回転数"
-            autoComplete="off"
-          />
-          <label htmlFor="jackpot-cash">前回記録からの現金（円）</label>
-          <input
-            id="jackpot-cash"
-            type="number"
-            inputMode="numeric"
-            min={0}
-            step={1}
-            value={cashIgnored ? "" : jackpotCash}
-            onChange={(e) => {
-              setJackpotCash(e.target.value);
-              setError(null);
-            }}
-            placeholder="貯玉・持ち玉中は空欄"
-            autoComplete="off"
-            disabled={cashIgnored}
-          />
-          <label htmlFor="jackpot-held">終了時の持ち玉</label>
-          <div className="entry-row">
+        <details
+          className="settings jackpot-panel"
+          open={jackpotOpen}
+          onToggle={(event) => {
+            setJackpotOpen(event.currentTarget.open);
+          }}
+        >
+          <summary>大当たり</summary>
+          <form className="jackpot-form" onSubmit={onAddJackpot}>
+            <label htmlFor="jackpot-spins">大当たり時の総回転数</label>
             <input
-              id="jackpot-held"
+              id="jackpot-spins"
               type="number"
               inputMode="numeric"
               min={0}
               step={1}
-              value={jackpotHeld}
+              value={jackpotSpins}
               onChange={(e) => {
-                setJackpotHeld(e.target.value);
+                setJackpotSpins(e.target.value);
                 setError(null);
               }}
-              placeholder="大当たり終了時の持ち玉"
+              placeholder="大当たりしたときの総回転数"
               autoComplete="off"
             />
-            <button type="submit" className="jackpot">
-              記録
-            </button>
-          </div>
-        </form>
+            <label htmlFor="jackpot-cash">前回記録からの現金（円）</label>
+            <input
+              id="jackpot-cash"
+              type="number"
+              inputMode="numeric"
+              min={0}
+              step={1}
+              value={cashIgnored ? "" : jackpotCash}
+              onChange={(e) => {
+                setJackpotCash(e.target.value);
+                setError(null);
+              }}
+              placeholder="貯玉・持ち玉中は空欄"
+              autoComplete="off"
+              disabled={cashIgnored}
+            />
+            <label htmlFor="jackpot-held">終了時の持ち玉</label>
+            <div className="entry-row">
+              <input
+                id="jackpot-held"
+                type="number"
+                inputMode="numeric"
+                min={0}
+                step={1}
+                value={jackpotHeld}
+                onChange={(e) => {
+                  setJackpotHeld(e.target.value);
+                  setError(null);
+                }}
+                placeholder="大当たり終了時の持ち玉"
+                autoComplete="off"
+              />
+              <button type="submit" className="jackpot">
+                記録
+              </button>
+            </div>
+          </form>
+        </details>
       ) : null}
 
       {error ? <p className="error">{error}</p> : null}
@@ -490,6 +473,63 @@ export default function App() {
             ))}
           </ul>
         )}
+      </details>
+
+      <details className="settings footer-settings">
+        <summary>設定（貯玉・基準玉数・投資単価・ボーダー）</summary>
+        <div className="settings-grid">
+          <label>
+            貯玉（発）
+            <input
+              type="number"
+              inputMode="numeric"
+              min={0}
+              step={1}
+              value={settingInputs.storedBalls}
+              onChange={(e) => updateSetting("storedBalls", e.target.value)}
+              onBlur={() => commitSetting("storedBalls")}
+            />
+          </label>
+          <label>
+            基準玉数
+            <input
+              type="number"
+              inputMode="numeric"
+              min={1}
+              step={1}
+              value={settingInputs.unitBalls}
+              onChange={(e) => updateSetting("unitBalls", e.target.value)}
+              onBlur={() => commitSetting("unitBalls")}
+            />
+          </label>
+          <label>
+            投資単価（円）
+            <input
+              type="number"
+              inputMode="numeric"
+              min={0}
+              step={1}
+              value={settingInputs.unitYen}
+              onChange={(e) => updateSetting("unitYen", e.target.value)}
+              onBlur={() => commitSetting("unitYen")}
+            />
+          </label>
+          <label>
+            ボーダー（回転/k）
+            <input
+              type="number"
+              inputMode="decimal"
+              min={0}
+              step={0.1}
+              value={borderInput}
+              onChange={(e) => updateBorder(e.target.value)}
+              placeholder="未入力"
+            />
+          </label>
+        </div>
+        <p className="hint">
+          貯玉は基準玉数で割った行数ぶん投資に含めません。投資額の貯玉は消化した玉数です。大当たりと端数は平均に含めません。ボーダーはセッション保存時にリセットされます。
+        </p>
       </details>
     </div>
   );

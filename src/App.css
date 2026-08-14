@@ -133,25 +133,18 @@ input:disabled {
   gap: 8px;
 }
 
-.jackpot-entry {
-  background: var(--panel);
-  border-radius: var(--radius);
-  padding: 14px 16px;
+.jackpot-form {
   display: flex;
   flex-direction: column;
   gap: 8px;
+  margin-top: 12px;
 }
 
-.jackpot-heading {
-  margin: 0 0 4px;
-  font-weight: 700;
-}
-
-.jackpot-entry label {
+.jackpot-form label {
   margin-top: 4px;
 }
 
-.jackpot-entry .entry-row {
+.jackpot-form .entry-row {
   margin-top: 4px;
 }
 
@@ -270,12 +263,16 @@ button.danger {
   background: #f08a5a;
 }
 
-.row-kind.miss {
+.row-kind.remainder {
   color: var(--muted);
   background: var(--panel-2);
 }
 
 .past-sessions {
+  margin-top: 20px;
+}
+
+.footer-settings {
   margin-top: 20px;
 }
 

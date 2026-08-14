@@ -19,7 +19,7 @@ export type DisplayKind =
   | "paid"
   | "held"
   | "jackpot"
-  | "miss";
+  | "remainder";
 
 export type PlayMode = "start" | "held" | "remainder" | "stored" | "cash";
 
@@ -126,11 +126,17 @@ export function parseRecordList(value: unknown): RecordEntry[] {
   });
 }
 
+export function needsNewBaseline(records: RecordEntry[]): boolean {
+  return (
+    records.length === 0 || records[records.length - 1].kind === "jackpot"
+  );
+}
+
 export function canAddSpin(records: RecordEntry[], next: number): boolean {
   if (!Number.isInteger(next) || next < 0) {
     return false;
   }
-  if (records.length === 0) {
+  if (needsNewBaseline(records)) {
     return true;
   }
   return next >= records[records.length - 1].totalSpins;
@@ -148,8 +154,8 @@ export function displayKindLabel(kind: DisplayKind): string {
       return "持ち玉";
     case "jackpot":
       return "当";
-    case "miss":
-      return "ハズレ";
+    case "remainder":
+      return "端数";
   }
 }
 
@@ -160,8 +166,8 @@ export function rowIndexLabel(row: RecordRow): string {
   if (row.displayKind === "jackpot") {
     return "当";
   }
-  if (row.displayKind === "miss") {
-    return "ハズレ";
+  if (row.displayKind === "remainder") {
+    return "端数";
   }
   return String(row.playIndex ?? "");
 }
@@ -171,7 +177,7 @@ export function playModeHint(mode: PlayMode, heldBalls: number): string | null {
     case "held":
       return `持ち玉遊技中（残り${heldBalls.toLocaleString("ja-JP")}玉）。記録しても投資は増えず、持ち玉から減算します。`;
     case "remainder":
-      return `端数残り${heldBalls.toLocaleString("ja-JP")}玉。打ち切ったら回転数を記録します（ハズレ・平均対象外）。`;
+      return `端数残り${heldBalls.toLocaleString("ja-JP")}玉。打ち切ったら回転数を記録します（平均対象外）。`;
     case "stored":
       return "貯玉遊技中。大当たり時の現金は未入力のままで、貯玉を基準玉数ぶん加算します。";
     case "cash":
@@ -246,7 +252,7 @@ export function summarize(
   let playIndexCounter = 0;
 
   const rows: RecordRow[] = records.map((entry, i) => {
-    if (i === 0) {
+    if (i === 0 || entry.kind === "start") {
       return {
         totalSpins: entry.totalSpins,
         delta: null,
@@ -257,7 +263,11 @@ export function summarize(
       };
     }
 
-    const delta = entry.totalSpins - records[i - 1].totalSpins;
+    const prev = records[i - 1];
+    const delta =
+      prev.kind === "jackpot"
+        ? null
+        : entry.totalSpins - prev.totalSpins;
 
     if (entry.kind === "jackpot") {
       const inHeldPlay = heldBalls > 0;
@@ -289,7 +299,7 @@ export function summarize(
       inAverage = true;
     } else if (heldBalls > 0) {
       heldBalls = 0;
-      displayKind = "miss";
+      displayKind = "remainder";
       inAverage = false;
     } else if (storedUnitsLeft > 0) {
       storedUnitsLeft -= 1;
@@ -303,7 +313,7 @@ export function summarize(
       inAverage = true;
     }
 
-    if (inAverage) {
+    if (inAverage && delta !== null) {
       includedDelta += delta;
       includedCount += 1;
       playIndexCounter += 1;
@@ -313,7 +323,7 @@ export function summarize(
       totalSpins: entry.totalSpins,
       delta,
       isStart: false,
-      playIndex: inAverage ? playIndexCounter : null,
+      playIndex: inAverage && delta !== null ? playIndexCounter : null,
       displayKind,
       inAverage,
     };
@@ -329,7 +339,9 @@ export function summarize(
     borderDiff === null
       ? null
       : `${borderDiff >= 0 ? "+" : ""}${borderDiff.toFixed(1)}`;
-  const investmentLabel = `貯玉${usedStoredBalls}発 + ${investmentYen.toLocaleString("ja-JP")}円`;
+  const yenLabel = `${investmentYen.toLocaleString("ja-JP")}円`;
+  const investmentLabel =
+    usedStoredBalls > 0 ? `貯玉${usedStoredBalls}発 + ${yenLabel}` : yenLabel;
   const playMode = currentPlayMode(records.length, heldBalls, storedUnitsLeft, unitBalls);
 
   return {
