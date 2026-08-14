@@ -89,18 +89,20 @@ function HistoryList({ rows }: { rows: RecordRow[] }) {
           >
             <details>
               <summary>
-                <span className="row-index">
-                  {groupedRowIndexLabel(item.rows)}
-                </span>
-                <span className="row-total">
-                  {groupedRowTotalLabel(item.rows)}
-                </span>
-                <span className="row-delta">
-                  {groupedRowDeltaLabel(item.rows)}
-                </span>
-                <span className={`row-kind ${groupedRowKindClass(item.rows)}`}>
-                  {groupedRowKindLabel(item.rows)}
-                </span>
+                <div className="history-group-head">
+                  <span className="row-index">
+                    {groupedRowIndexLabel(item.rows)}
+                  </span>
+                  <span className="row-total">
+                    {groupedRowTotalLabel(item.rows)}
+                  </span>
+                  <span className="row-delta">
+                    {groupedRowDeltaLabel(item.rows)}
+                  </span>
+                  <span className={`row-kind ${groupedRowKindClass(item.rows)}`}>
+                    {groupedRowKindLabel(item.rows)}
+                  </span>
+                </div>
               </summary>
               <ol className="history-group-rows">
                 {item.rows.map((row, offset) => (
@@ -803,9 +805,15 @@ export default function App() {
             />
           </label>
         </div>
-        <p className="hint">
-          投資単価は基準玉数 × 貸出レートです。貯玉は基準玉数で割った行数ぶん投資に含めません。端数の貯玉は持ち玉の端数と同じく平均対象外です。投資額の貯玉は消化した玉数です。大当たりと端数は平均に含めません。ボーダーはセッション保存時にリセットされます。持ち玉と投資額はタップで表示を切り替えます。
-        </p>
+        <ul className="settings-notes">
+          <li>投資単価は基準玉数 × 貸出レートです。</li>
+          <li>貯玉は基準玉数で割った行数ぶん投資に含めません。</li>
+          <li>端数の貯玉は持ち玉の端数と同じく平均対象外です。</li>
+          <li>投資額の貯玉は消化した玉数です。</li>
+          <li>大当たりと端数は平均に含めません。</li>
+          <li>ボーダーはセッション保存時にリセットされます。</li>
+          <li>持ち玉と投資額はタップで表示を切り替えます。</li>
+        </ul>
       </details>
     </div>
   );
