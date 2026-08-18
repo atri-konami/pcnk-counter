@@ -164,6 +164,33 @@ function formatYen(yen: number): string {
   return `${yen.toLocaleString("ja-JP")}円`;
 }
 
+export function sessionProfitYen(
+  heldBalls: number,
+  usedStoredBalls: number,
+  investmentYen: number,
+  exchangeBalls: number,
+): number {
+  const heldYen = yenWithFraction(heldBalls, exchangeBalls);
+  const investedYen =
+    yenWithFraction(usedStoredBalls, exchangeBalls) + investmentYen;
+  return heldYen - investedYen;
+}
+
+export function formatSignedYen(yen: number): string {
+  const magnitude = `${Math.abs(yen).toLocaleString("ja-JP")}円`;
+  return yen < 0 ? `-${magnitude}` : `+${magnitude}`;
+}
+
+export function formatHeldBallsWithYen(
+  heldBalls: number,
+  exchangeBalls: number,
+): string {
+  const balls = Math.max(0, Math.floor(heldBalls));
+  return `${balls.toLocaleString("ja-JP")}玉（${formatYen(
+    yenWithFraction(balls, exchangeBalls),
+  )}）`;
+}
+
 export function formatHeldDisplay(
   heldBalls: number,
   exchangeBalls: number,

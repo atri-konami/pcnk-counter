@@ -3,8 +3,10 @@ import {
   canAddSpin,
   displayKindLabel,
   exchangeRateSelectOptions,
+  formatHeldBallsWithYen,
   formatHeldDisplay,
   formatInvestmentDisplay,
+  formatSignedYen,
   groupHistoryRows,
   groupedRowDeltaLabel,
   groupedRowIndexLabel,
@@ -28,6 +30,7 @@ import {
   resolveJackpotCash,
   rowIndexLabel,
   rowTotalLabel,
+  sessionProfitYen,
   summarize,
   unitYenFromSettings,
   type RecordRow,
@@ -197,6 +200,13 @@ function PastSessionItem({
     () => summarize(session.records, session.settings, session.border),
     [session],
   );
+  const exchangeBalls = session.settings.exchangeBalls;
+  const profitYen = sessionProfitYen(
+    summary.heldBalls,
+    summary.usedStoredBalls,
+    summary.investmentYen,
+    exchangeBalls,
+  );
 
   return (
     <li>
@@ -207,14 +217,33 @@ function PastSessionItem({
             <span className="session-item-meta">{formatSavedAt(session.savedAt)}</span>
           </span>
           <span className="session-item-stats">
-            {summary.averageLabel}
-            {summary.borderDiffLabel ? ` (${summary.borderDiffLabel})` : ""} /{" "}
-            {summary.investmentLabel}
+            <span className="session-item-stats-row">
+              <span className="session-item-stat">
+                {summary.averageLabel}
+                {summary.borderDiffLabel ? ` (${summary.borderDiffLabel})` : ""}
+              </span>
+              <span className="session-item-stat">
+                {summary.totalDelta.toLocaleString("ja-JP")}回転
+              </span>
+            </span>
+            <span className="session-item-stats-row">
+              <span className="session-item-stat">
+                投資額 {summary.investmentLabel}
+              </span>
+              <span className="session-item-stat">
+                持ち玉 {formatHeldBallsWithYen(summary.heldBalls, exchangeBalls)}
+              </span>
+              <span
+                className={`session-item-stat ${profitYen >= 0 ? "plus" : "minus"}`}
+              >
+                {formatSignedYen(profitYen)}
+              </span>
+            </span>
           </span>
         </summary>
         <HistoryList
           rows={summary.rows}
-          exchangeBalls={session.settings.exchangeBalls}
+          exchangeBalls={exchangeBalls}
         />
         <button
           type="button"

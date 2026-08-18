@@ -557,6 +557,31 @@ button.danger {
   font-variant-numeric: tabular-nums;
 }
 
+.session-item-stats {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.session-item-stats-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 12px;
+  align-items: baseline;
+}
+
+.session-item-stat {
+  white-space: nowrap;
+}
+
+.session-item-stat.plus {
+  color: var(--accent);
+}
+
+.session-item-stat.minus {
+  color: var(--danger);
+}
+
 .session-item .history-list {
   margin-top: 12px;
 }
