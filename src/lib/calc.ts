@@ -164,6 +164,14 @@ function formatYen(yen: number): string {
   return `${yen.toLocaleString("ja-JP")}円`;
 }
 
+function storedBallsInnerNote(usedStoredBalls: number): string {
+  const n = Math.max(0, Math.floor(usedStoredBalls));
+  if (n <= 0) {
+    return "";
+  }
+  return ` (内 貯玉${n.toLocaleString("ja-JP")}玉)`;
+}
+
 export function sessionProfitYen(
   heldBalls: number,
   usedStoredBalls: number,
@@ -230,7 +238,10 @@ export function formatInvestmentDisplay(
     };
   }
   const storedYen = yenWithFraction(usedStoredBalls, exchangeBalls);
-  return { value: formatYen(storedYen + investmentYen), subvalue: null };
+  return {
+    value: `${formatYen(storedYen + investmentYen)}${storedBallsInnerNote(usedStoredBalls)}`,
+    subvalue: null,
+  };
 }
 
 export function nextHeldDisplayMode(mode: HeldDisplayMode): HeldDisplayMode {
@@ -735,8 +746,12 @@ export function summarize(
     borderDiff === null
       ? null
       : `${borderDiff >= 0 ? "+" : ""}${borderDiff.toFixed(1)}`;
-  const storedYen = yenWithFraction(usedStoredBalls, settings.exchangeBalls);
-  const investmentLabel = formatYen(storedYen + investmentYen);
+  const investmentLabel = formatInvestmentDisplay(
+    usedStoredBalls,
+    investmentYen,
+    settings.exchangeBalls,
+    "yenWithoutFraction",
+  ).value;
   const playMode = currentPlayMode(
     lastGameplayRecord(records) !== undefined,
     heldBalls,
