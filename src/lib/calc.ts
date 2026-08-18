@@ -735,9 +735,8 @@ export function summarize(
     borderDiff === null
       ? null
       : `${borderDiff >= 0 ? "+" : ""}${borderDiff.toFixed(1)}`;
-  const yenLabel = `${investmentYen.toLocaleString("ja-JP")}円`;
-  const investmentLabel =
-    usedStoredBalls > 0 ? `貯玉${usedStoredBalls}発 + ${yenLabel}` : yenLabel;
+  const storedYen = yenWithFraction(usedStoredBalls, settings.exchangeBalls);
+  const investmentLabel = formatYen(storedYen + investmentYen);
   const playMode = currentPlayMode(
     lastGameplayRecord(records) !== undefined,
     heldBalls,

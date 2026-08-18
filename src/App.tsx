@@ -86,21 +86,13 @@ function JackpotSnapshotDetail({
     snapshot.usedStoredBalls,
     snapshot.investmentYen,
     exchangeBalls,
-    "ballsAndYen",
-  );
-  const investmentYenDisplay = formatInvestmentDisplay(
-    snapshot.usedStoredBalls,
-    snapshot.investmentYen,
-    exchangeBalls,
     "yenWithoutFraction",
   );
   return (
     <div className="history-jackpot-detail">
       <div className="history-jackpot-stat">
         <span className="label">投資額</span>
-        <strong>
-          {investmentDisplay.value}（{investmentYenDisplay.value}）
-        </strong>
+        <strong>{investmentDisplay.value}</strong>
       </div>
       <div className="history-jackpot-stat">
         <span className="label">持ち玉</span>
