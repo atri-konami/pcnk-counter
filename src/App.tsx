@@ -27,6 +27,8 @@ import {
   parseNonNegativeInt,
   parseNonNegativeNumber,
   playModeHint,
+  resolveFinishCash,
+  resolveFinishHeld,
   resolveJackpotCash,
   rowIndexLabel,
   rowTotalLabel,
@@ -67,6 +69,30 @@ function HistoryRowCells({ row }: { row: RecordRow }) {
         {displayKindLabel(row.displayKind)}
       </span>
     </>
+  );
+}
+
+function FinishSnapshotDetail({
+  snapshot,
+}: {
+  snapshot: NonNullable<RecordRow["snapshot"]>;
+}) {
+  const cashYen = snapshot.cashYen ?? 0;
+  const usedHeldBalls = snapshot.usedHeldBalls ?? 0;
+  return (
+    <div className="history-jackpot-detail">
+      <div className="history-jackpot-stat">
+        <span className="label">前回からの現金</span>
+        <strong>+{cashYen.toLocaleString("ja-JP")}円</strong>
+      </div>
+      <div className="history-jackpot-stat">
+        <span className="label">持ち玉</span>
+        <strong>
+          残{snapshot.heldBalls.toLocaleString("ja-JP")}玉（使用
+          {usedHeldBalls.toLocaleString("ja-JP")}玉）
+        </strong>
+      </div>
+    </div>
   );
 }
 
@@ -132,6 +158,20 @@ function HistoryList({
                   snapshot={item.row.snapshot}
                   exchangeBalls={exchangeBalls}
                 />
+              </details>
+            </li>
+          ) : item.row.displayKind === "finish" && item.row.snapshot ? (
+            <li
+              key={`${item.row.totalSpins}-${item.row.displayKind}-${item.index}`}
+              className="history-finish"
+            >
+              <details>
+                <summary aria-label="遊技終了時点の投資額と持ち玉を表示">
+                  <div className="history-jackpot-head">
+                    <HistoryRowCells row={item.row} />
+                  </div>
+                </summary>
+                <FinishSnapshotDetail snapshot={item.row.snapshot} />
               </details>
             </li>
           ) : (
@@ -263,6 +303,9 @@ export default function App() {
   const [jackpotCash, setJackpotCash] = useState("");
   const [jackpotHeld, setJackpotHeld] = useState("");
   const [jackpotOpen, setJackpotOpen] = useState(false);
+  const [finishSpins, setFinishSpins] = useState("");
+  const [finishCash, setFinishCash] = useState("");
+  const [finishHeld, setFinishHeld] = useState("");
   const [borderInput, setBorderInput] = useState(() =>
     formatBorderInput(state.border),
   );
@@ -405,6 +448,12 @@ export default function App() {
     setJackpotHeld("");
   }
 
+  function clearFinishInputs() {
+    setFinishSpins("");
+    setFinishCash("");
+    setFinishHeld("");
+  }
+
   function onAdd(event: FormEvent) {
     event.preventDefault();
     const next = parseNonNegativeInt(input);
@@ -465,6 +514,43 @@ export default function App() {
     }));
     clearJackpotInputs();
     setJackpotOpen(false);
+    setError(null);
+  }
+
+  function onAddFinish(event: FormEvent) {
+    event.preventDefault();
+    const next = parseNonNegativeInt(finishSpins);
+    if (next === null) {
+      setError("最終回転数は0以上の整数を入力してください");
+      return;
+    }
+    if (!canAddSpin(state.records, next)) {
+      setError("直前の総回転数以上を入力してください");
+      return;
+    }
+    const cash = resolveFinishCash(finishCash);
+    if (!cash.ok) {
+      setError(cash.error);
+      return;
+    }
+    const held = resolveFinishHeld(finishHeld, summary.heldBalls);
+    if (!held.ok) {
+      setError(held.error);
+      return;
+    }
+    setState((prev) => ({
+      ...prev,
+      records: [
+        ...prev.records,
+        {
+          totalSpins: next,
+          kind: "finish",
+          cashYen: cash.cashYen,
+          heldBalls: held.remaining,
+        },
+      ],
+    }));
+    clearFinishInputs();
     setError(null);
   }
 
@@ -538,6 +624,7 @@ export default function App() {
     setBorderInput("");
     setHeldAdjustInput("");
     clearJackpotInputs();
+    clearFinishInputs();
     setJackpotOpen(false);
     setError(null);
   }
@@ -786,6 +873,64 @@ export default function App() {
         </details>
       ) : null}
 
+      {!isStart ? (
+        <details className="settings finish-panel">
+          <summary>遊技終了</summary>
+          <form className="jackpot-form" onSubmit={onAddFinish}>
+            <label htmlFor="finish-spins">最終回転数</label>
+            <input
+              id="finish-spins"
+              type="number"
+              inputMode="numeric"
+              min={0}
+              step={1}
+              value={finishSpins}
+              onChange={(e) => {
+                setFinishSpins(e.target.value);
+                setError(null);
+              }}
+              placeholder="中総コンプの総回転数"
+              autoComplete="off"
+            />
+            <label htmlFor="finish-cash">前回記録からの現金（円）</label>
+            <input
+              id="finish-cash"
+              type="number"
+              inputMode="numeric"
+              min={0}
+              step={1}
+              value={finishCash}
+              onChange={(e) => {
+                setFinishCash(e.target.value);
+                setError(null);
+              }}
+              placeholder="空欄は0円"
+              autoComplete="off"
+            />
+            <label htmlFor="finish-held">終了時の持ち玉</label>
+            <div className="entry-row">
+              <input
+                id="finish-held"
+                type="number"
+                inputMode="numeric"
+                min={0}
+                step={1}
+                value={finishHeld}
+                onChange={(e) => {
+                  setFinishHeld(e.target.value);
+                  setError(null);
+                }}
+                placeholder={`現在${summary.heldBalls.toLocaleString("ja-JP")}玉（空欄は0）`}
+                autoComplete="off"
+              />
+              <button type="submit" className="primary">
+                記録
+              </button>
+            </div>
+          </form>
+        </details>
+      ) : null}
+
       {error ? <p className="error">{error}</p> : null}
 
       <div className="actions">
@@ -908,7 +1053,7 @@ export default function App() {
           <li>貯玉は基準玉数で割った行数ぶん投資に含めません。</li>
           <li>端数の貯玉は持ち玉の端数と同じく平均対象外です。</li>
           <li>投資額の貯玉は消化した玉数です。</li>
-          <li>大当たりと端数は平均に含めません。</li>
+          <li>大当たりと端数は平均に含めません。遊技終了は使った持ち玉と現金の円換算ぶん平均に含めます。</li>
           <li>ボーダーはセッション保存時にリセットされます。</li>
           <li>持ち玉と投資額はタップで表示を切り替えます。</li>
         </ul>

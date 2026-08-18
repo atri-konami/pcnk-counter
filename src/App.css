@@ -337,14 +337,16 @@ button.danger {
 }
 
 .history-list > li.history-group,
-.history-list > li.history-jackpot {
+.history-list > li.history-jackpot,
+.history-list > li.history-finish {
   display: block;
   padding: 0;
   overflow: hidden;
 }
 
 .history-group summary,
-.history-jackpot summary {
+.history-jackpot summary,
+.history-finish summary {
   display: block;
   padding: 0;
   cursor: pointer;
@@ -372,13 +374,16 @@ button.danger {
 .history-group summary::-webkit-details-marker,
 .history-group summary::marker,
 .history-jackpot summary::-webkit-details-marker,
-.history-jackpot summary::marker {
+.history-jackpot summary::marker,
+.history-finish summary::-webkit-details-marker,
+.history-finish summary::marker {
   display: none;
   content: "";
 }
 
 .history-group summary::before,
-.history-jackpot summary::before {
+.history-jackpot summary::before,
+.history-finish summary::before {
   content: "";
   position: absolute;
   left: 12px;
@@ -391,12 +396,14 @@ button.danger {
 }
 
 .history-group details[open] summary::before,
-.history-jackpot details[open] summary::before {
+.history-jackpot details[open] summary::before,
+.history-finish details[open] summary::before {
   transform: translateY(-50%) rotate(45deg);
 }
 
 .history-group summary:focus-visible,
-.history-jackpot summary:focus-visible {
+.history-jackpot summary:focus-visible,
+.history-finish summary:focus-visible {
   outline: 2px solid var(--accent);
   outline-offset: -2px;
 }
@@ -486,6 +493,11 @@ button.danger {
 .row-kind.jackpot {
   color: #2a1208;
   background: #f08a5a;
+}
+
+.row-kind.finish {
+  color: #101828;
+  background: #8ea2c8;
 }
 
 .row-kind.remainder {

@@ -17,6 +17,7 @@ export type RecordKind =
   | "start"
   | "play"
   | "jackpot"
+  | "finish"
   | "adjustHeld"
   | "adjustInvestment";
 
@@ -33,6 +34,7 @@ export type DisplayKind =
   | "paid"
   | "held"
   | "jackpot"
+  | "finish"
   | "remainder"
   | "adjustHeld"
   | "adjustInvestment";
@@ -51,6 +53,8 @@ export type RecordRow = {
     heldBalls: number;
     investmentYen: number;
     usedStoredBalls: number;
+    cashYen?: number;
+    usedHeldBalls?: number;
   };
 };
 
@@ -107,7 +111,7 @@ export const INVESTMENT_INCREMENTS = [200, 500, 1000, 10000] as const;
 
 const AVERAGE_BASE_YEN = 1000;
 
-const GAMEPLAY_KINDS: RecordKind[] = ["start", "play", "jackpot"];
+const GAMEPLAY_KINDS: RecordKind[] = ["start", "play", "jackpot", "finish"];
 
 function isGameplayKind(kind: RecordKind): boolean {
   return GAMEPLAY_KINDS.includes(kind);
@@ -348,6 +352,7 @@ export function toRecordEntry(value: unknown, index: number): RecordEntry | null
   }
   const kind: RecordKind =
     raw.kind === "jackpot" ||
+    raw.kind === "finish" ||
     raw.kind === "play" ||
     raw.kind === "start" ||
     raw.kind === "adjustHeld" ||
@@ -357,11 +362,13 @@ export function toRecordEntry(value: unknown, index: number): RecordEntry | null
         ? "start"
         : "play";
   const entry: RecordEntry = { totalSpins: raw.totalSpins, kind };
-  if (kind === "jackpot") {
+  if (kind === "jackpot" || kind === "finish") {
     entry.cashYen =
       typeof raw.cashYen === "number" && Number.isInteger(raw.cashYen) && raw.cashYen >= 0
         ? raw.cashYen
-        : null;
+        : kind === "finish"
+          ? 0
+          : null;
     entry.heldBalls =
       typeof raw.heldBalls === "number" && Number.isInteger(raw.heldBalls) && raw.heldBalls >= 0
         ? raw.heldBalls
@@ -420,6 +427,8 @@ export function displayKindLabel(kind: DisplayKind): string {
       return "持ち玉";
     case "jackpot":
       return "当";
+    case "finish":
+      return "終了";
     case "remainder":
       return "端数";
     case "adjustHeld":
@@ -435,6 +444,9 @@ export function rowIndexLabel(row: RecordRow): string {
   }
   if (row.displayKind === "jackpot") {
     return "当";
+  }
+  if (row.displayKind === "finish") {
+    return "終了";
   }
   if (row.displayKind === "remainder") {
     return "端数";
@@ -575,6 +587,34 @@ export function resolveJackpotCash(
   return { ok: true, cashYen: parsed };
 }
 
+export function resolveFinishCash(
+  cashRaw: string,
+): { ok: true; cashYen: number } | { ok: false; error: string } {
+  if (cashRaw.trim() === "") {
+    return { ok: true, cashYen: 0 };
+  }
+  const parsed = parseNonNegativeInt(cashRaw);
+  if (parsed === null) {
+    return { ok: false, error: "現金投資額は0以上の整数を入力してください" };
+  }
+  return { ok: true, cashYen: parsed };
+}
+
+export function resolveFinishHeld(
+  heldRaw: string,
+  currentHeld: number,
+): { ok: true; remaining: number; usedHeld: number } | { ok: false; error: string } {
+  const remaining =
+    heldRaw.trim() === "" ? 0 : parseNonNegativeInt(heldRaw);
+  if (remaining === null) {
+    return { ok: false, error: "終了時の持ち玉は0以上の整数を入力してください" };
+  }
+  if (remaining > currentHeld) {
+    return { ok: false, error: "終了時の持ち玉が現在の持ち玉を超えています" };
+  }
+  return { ok: true, remaining, usedHeld: currentHeld - remaining };
+}
+
 function currentPlayMode(
   hasGameplay: boolean,
   heldBalls: number,
@@ -607,6 +647,7 @@ export function summarize(
 ): Summary {
   const storedBalls = Math.max(0, Math.floor(settings.storedBalls));
   const unitBalls = Math.max(1, Math.floor(settings.unitBalls) || 1);
+  const lendRateYen = Math.max(0, Math.floor(settings.lendRateYen));
   const unitYen = unitYenFromSettings(settings);
 
   const freeRows = Math.floor(storedBalls / unitBalls);
@@ -617,6 +658,7 @@ export function summarize(
   let investmentYen = 0;
   let paidRows = 0;
   let includedDelta = 0;
+  let includedYen = 0;
   let includedCount = 0;
   let playIndexCounter = 0;
 
@@ -691,6 +733,37 @@ export function summarize(
       };
     }
 
+    if (entry.kind === "finish") {
+      const remaining = Math.max(0, Math.floor(entry.heldBalls ?? 0));
+      const usedHeldBalls = Math.max(0, heldBalls - remaining);
+      const cashYen = Math.max(0, Math.floor(entry.cashYen ?? 0));
+      const finishYen = usedHeldBalls * lendRateYen + cashYen;
+      const inAverage = finishYen > 0 && delta !== null;
+      if (inAverage) {
+        includedDelta += delta;
+        includedYen += finishYen;
+        includedCount += 1;
+      }
+      investmentYen += cashYen;
+      heldBalls = remaining;
+      return {
+        totalSpins: entry.totalSpins,
+        delta,
+        isStart: false,
+        playIndex: null,
+        displayKind: "finish",
+        inAverage,
+        amount: cashYen,
+        snapshot: {
+          heldBalls,
+          investmentYen,
+          usedStoredBalls,
+          cashYen,
+          usedHeldBalls,
+        },
+      };
+    }
+
     let displayKind: DisplayKind;
     let inAverage = false;
 
@@ -721,6 +794,7 @@ export function summarize(
 
     if (inAverage && delta !== null) {
       includedDelta += delta;
+      includedYen += unitYen;
       includedCount += 1;
       playIndexCounter += 1;
     }
@@ -736,9 +810,8 @@ export function summarize(
     };
   });
 
-  const denom = (unitYen * includedCount) / AVERAGE_BASE_YEN;
-  const average =
-    includedCount > 0 && unitYen > 0 ? includedDelta / denom : null;
+  const denom = includedYen / AVERAGE_BASE_YEN;
+  const average = includedYen > 0 ? includedDelta / denom : null;
   const averageLabel = average === null ? "—" : `${average.toFixed(1)}回転/k`;
   const borderDiff =
     average === null || border === null ? null : average - border;
