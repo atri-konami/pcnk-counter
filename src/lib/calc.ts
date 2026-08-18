@@ -428,7 +428,7 @@ export function displayKindLabel(kind: DisplayKind): string {
     case "jackpot":
       return "当";
     case "finish":
-      return "終了";
+      return "手動";
     case "remainder":
       return "端数";
     case "adjustHeld":
@@ -446,7 +446,7 @@ export function rowIndexLabel(row: RecordRow): string {
     return "当";
   }
   if (row.displayKind === "finish") {
-    return "終了";
+    return "手動";
   }
   if (row.displayKind === "remainder") {
     return "端数";
@@ -610,10 +610,10 @@ export function resolveFinishHeld(
   const remaining =
     heldRaw.trim() === "" ? 0 : parseNonNegativeInt(heldRaw);
   if (remaining === null) {
-    return { ok: false, error: "終了時の持ち玉は0以上の整数を入力してください" };
+    return { ok: false, error: "記録時の持ち玉は0以上の整数を入力してください" };
   }
   if (remaining > currentHeld) {
-    return { ok: false, error: "終了時の持ち玉が現在の持ち玉を超えています" };
+    return { ok: false, error: "記録時の持ち玉が現在の持ち玉を超えています" };
   }
   return { ok: true, remaining, usedHeld: currentHeld - remaining };
 }

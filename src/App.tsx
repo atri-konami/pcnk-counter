@@ -166,7 +166,7 @@ function HistoryList({
               className="history-finish"
             >
               <details>
-                <summary aria-label="遊技終了時点の投資額と持ち玉を表示">
+                <summary aria-label="マニュアル記録時点の投資額と持ち玉を表示">
                   <div className="history-jackpot-head">
                     <HistoryRowCells row={item.row} />
                   </div>
@@ -521,7 +521,7 @@ export default function App() {
     event.preventDefault();
     const next = parseNonNegativeInt(finishSpins);
     if (next === null) {
-      setError("最終回転数は0以上の整数を入力してください");
+      setError("回転数は0以上の整数を入力してください");
       return;
     }
     if (!canAddSpin(state.records, next)) {
@@ -875,9 +875,9 @@ export default function App() {
 
       {!isStart ? (
         <details className="settings finish-panel">
-          <summary>遊技終了</summary>
+          <summary>マニュアル記録</summary>
           <form className="jackpot-form" onSubmit={onAddFinish}>
-            <label htmlFor="finish-spins">最終回転数</label>
+            <label htmlFor="finish-spins">回転数</label>
             <input
               id="finish-spins"
               type="number"
@@ -889,7 +889,7 @@ export default function App() {
                 setFinishSpins(e.target.value);
                 setError(null);
               }}
-              placeholder="中総コンプの総回転数"
+              placeholder="データカウンターの総回転数"
               autoComplete="off"
             />
             <label htmlFor="finish-cash">前回記録からの現金（円）</label>
@@ -907,7 +907,7 @@ export default function App() {
               placeholder="空欄は0円"
               autoComplete="off"
             />
-            <label htmlFor="finish-held">終了時の持ち玉</label>
+            <label htmlFor="finish-held">記録時の持ち玉</label>
             <div className="entry-row">
               <input
                 id="finish-held"
@@ -1053,7 +1053,7 @@ export default function App() {
           <li>貯玉は基準玉数で割った行数ぶん投資に含めません。</li>
           <li>端数の貯玉は持ち玉の端数と同じく平均対象外です。</li>
           <li>投資額の貯玉は消化した玉数です。</li>
-          <li>大当たりと端数は平均に含めません。遊技終了は使った持ち玉と現金の円換算ぶん平均に含めます。</li>
+          <li>大当たりと端数は平均に含めません。マニュアル記録は使った持ち玉と現金の円換算ぶん平均に含めます。</li>
           <li>ボーダーはセッション保存時にリセットされます。</li>
           <li>持ち玉と投資額はタップで表示を切り替えます。</li>
         </ul>
