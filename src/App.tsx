@@ -138,7 +138,7 @@ function HistoryList({
   if (rows.length === 0) {
     return <p className="empty">記録がありません。</p>;
   }
-  const items = groupHistoryRows(rows);
+  const items = [...groupHistoryRows(rows)].reverse();
   return (
     <ol className="history-list">
       {items.map((item) =>
@@ -205,7 +205,7 @@ function HistoryList({
                 </div>
               </summary>
               <ol className="history-group-rows">
-                {item.rows.map((row, offset) => (
+                {[...item.rows].reverse().map((row, offset) => (
                   <li
                     key={`${row.totalSpins}-${row.displayKind}-${item.index + offset}`}
                   >

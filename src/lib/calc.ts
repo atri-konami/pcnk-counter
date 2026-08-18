@@ -502,9 +502,12 @@ export function groupHistoryRows(rows: RecordRow[]): HistoryListItem[] {
       });
       offset += HISTORY_GROUP_SIZE;
     }
-    while (offset < j) {
-      items.push({ type: "single", row: rows[offset], index: offset });
-      offset += 1;
+    if (offset < j) {
+      items.push({
+        type: "group",
+        rows: rows.slice(offset, j),
+        index: offset,
+      });
     }
     i = j;
   }
