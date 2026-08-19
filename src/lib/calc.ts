@@ -503,11 +503,19 @@ export function groupHistoryRows(rows: RecordRow[]): HistoryListItem[] {
       offset += HISTORY_GROUP_SIZE;
     }
     if (offset < j) {
-      items.push({
-        type: "group",
-        rows: rows.slice(offset, j),
-        index: offset,
-      });
+      const closed = j < rows.length;
+      if (closed) {
+        items.push({
+          type: "group",
+          rows: rows.slice(offset, j),
+          index: offset,
+        });
+      } else {
+        while (offset < j) {
+          items.push({ type: "single", row: rows[offset], index: offset });
+          offset += 1;
+        }
+      }
     }
     i = j;
   }
