@@ -504,7 +504,8 @@ export function groupHistoryRows(rows: RecordRow[]): HistoryListItem[] {
     }
     if (offset < j) {
       const closed = j < rows.length;
-      if (closed) {
+      const remainder = j - offset;
+      if (closed && remainder >= 2) {
         items.push({
           type: "group",
           rows: rows.slice(offset, j),
