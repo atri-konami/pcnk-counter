@@ -82,7 +82,7 @@ function FinishSnapshotDetail({
   return (
     <div className="history-jackpot-detail">
       <div className="history-jackpot-stat">
-        <span className="label">前回からの現金</span>
+        <span className="label">前回からの投資額</span>
         <strong>+{cashYen.toLocaleString("ja-JP")}円</strong>
       </div>
       <div className="history-jackpot-stat">
@@ -521,7 +521,7 @@ export default function App() {
     event.preventDefault();
     const next = parseNonNegativeInt(finishSpins);
     if (next === null) {
-      setError("回転数は0以上の整数を入力してください");
+      setError("記録時の回転数は0以上の整数を入力してください");
       return;
     }
     if (!canAddSpin(state.records, next)) {
@@ -833,7 +833,7 @@ export default function App() {
               placeholder="大当たりしたときの総回転数"
               autoComplete="off"
             />
-            <label htmlFor="jackpot-cash">前回記録からの現金（円）</label>
+            <label htmlFor="jackpot-cash">前回記録からの投資額（円）</label>
             <input
               id="jackpot-cash"
               type="number"
@@ -877,7 +877,7 @@ export default function App() {
         <details className="settings finish-panel">
           <summary>マニュアル記録</summary>
           <form className="jackpot-form" onSubmit={onAddFinish}>
-            <label htmlFor="finish-spins">回転数</label>
+            <label htmlFor="finish-spins">記録時の回転数</label>
             <input
               id="finish-spins"
               type="number"
@@ -892,7 +892,7 @@ export default function App() {
               placeholder="データカウンターの総回転数"
               autoComplete="off"
             />
-            <label htmlFor="finish-cash">前回記録からの現金（円）</label>
+            <label htmlFor="finish-cash">前回記録からの投資額（円）</label>
             <input
               id="finish-cash"
               type="number"

@@ -569,7 +569,7 @@ export function playModeHint(mode: PlayMode, balls: number): string | null {
     case "stored":
       return "貯玉遊技中。大当たり時の現金は未入力のままで、貯玉を基準玉数ぶん加算します。";
     case "cash":
-      return "現金遊技中。大当たり時は前回記録からの現金投資額を入力します。";
+      return "現金遊技中。大当たり時は前回記録からの投資額を入力します。";
     case "start":
       return null;
   }
